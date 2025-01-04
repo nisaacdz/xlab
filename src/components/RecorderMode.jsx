@@ -27,6 +27,7 @@ function RecorderMode() {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+            <div></div>
             <div className="selector">
                 <label className="block text-gray-700 font-medium mb-1">Resolution</label>
                 <select
