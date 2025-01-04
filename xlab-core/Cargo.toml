@@ -1,0 +1,12 @@
+[package]
+name = "xlab-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+xcap = "0.2.0"
+mouse_position = "0.1.4"
+rand = "0.8.5"
+
+[build-dependencies]
+bindgen = "0.71.1"

@@ -1,53 +1,39 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/tauri";
+import React, { useState } from "react";
+import EditorMode from './components/EditorMode';
+import RecorderMode from './components/RecorderMode';
+import RecordingsList from './components/RecordingsList';
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+    const [mode, setMode] = useState('recorder'); // recorder | editor
+    const [currentRecording, setCurrentRecording] = useState(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
-  }
+    const handleViewRecording = (recording) => {
+        setCurrentRecording(recording);
+        setMode('editor');
+    };
 
-  return (
-    <div className="container">
-      <h1>Welcome to Tauri!</h1>
+    const handleBackToIdle = () => {
+        setCurrentRecording(null);
+        setMode('recorder');
+    };
 
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-
-      <p>{greetMsg}</p>
-    </div>
-  );
+    return (
+        <main className="app-container flex flex-col w-full h-full">
+            <h1 className="text-2xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500 mb-6">
+                Screen Recorder
+            </h1>
+            <div className="px-8 py-4 grid grid-cols-2 w-full h-full">
+                {mode === 'recorder' && (
+                    <RecorderMode />
+                )}
+                {mode === 'editor' && (
+                    <EditorMode />
+                )}
+                <RecordingsList onViewRecording={handleViewRecording} />
+            </div>
+        </main>
+    );
 }
 
 export default App;

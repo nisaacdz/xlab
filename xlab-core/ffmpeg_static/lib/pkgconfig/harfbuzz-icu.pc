@@ -1,0 +1,13 @@
+prefix=/workspaces/ffmpeg-static/target
+exec_prefix=/workspaces/ffmpeg-static/target
+libdir=/workspaces/ffmpeg-static/target/lib
+includedir=/workspaces/ffmpeg-static/target/include
+
+Name: harfbuzz
+Description: HarfBuzz text shaping library ICU integration
+Version: 1.4.6
+
+Requires: harfbuzz
+Requires.private: icu-uc
+Libs: -L${libdir} -lharfbuzz-icu
+Cflags: -I${includedir}/harfbuzz

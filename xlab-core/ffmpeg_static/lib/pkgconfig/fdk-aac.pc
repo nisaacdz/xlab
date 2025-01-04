@@ -1,0 +1,11 @@
+prefix=/workspaces/ffmpeg-static/target
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Fraunhofer FDK AAC Codec Library
+Description: AAC codec library
+Version: 0.1.6
+Libs: -L${libdir} -lfdk-aac -lm 
+Libs.private: 
+Cflags: -I${includedir}
