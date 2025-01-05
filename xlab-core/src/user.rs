@@ -30,7 +30,7 @@ pub fn get_user_options() -> &'static Mutex<UserOptions> {
     OPTIONS.get_or_init(move || {
         let pointer = get_pointers().get(0).unwrap().as_ref();
         let frame_rate = 32;
-        let resolution = (1920, 1080);
+        let resolution = (1366, 768);
         Mutex::new(UserOptions::new(pointer, frame_rate, resolution))
     })
 }

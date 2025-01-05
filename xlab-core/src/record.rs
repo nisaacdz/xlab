@@ -135,12 +135,7 @@ pub fn save_video() {
             // png image is at image_path
             // append the image to the video
             let image_path = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            // video_encoder.push_frame(&image_path).unwrap();
-            if let Ok(_) = video_encoder.push_frame(&image_path) {
-                
-            } else {
-                println!("error at frame number {cache_count}");
-            }
+            video_encoder.append_image(&image_path).unwrap();
         }
 
         get_save_progress()

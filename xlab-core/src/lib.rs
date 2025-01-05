@@ -21,7 +21,7 @@ mod tests {
         update_pointer(1);
         update_frame_rate(24);
         record();
-        std::thread::sleep(Duration::from_secs(12));
+        std::thread::sleep(Duration::from_secs(18));
         stop();
         super::record::get_record_handle().lock().unwrap().take().map(|u| u.join());
         save_video();
