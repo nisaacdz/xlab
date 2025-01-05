@@ -43,6 +43,7 @@ pub fn get_pointers() -> &'static Vec<Box<dyn Pointer + Send + Sync>> {
                 xcap::image::open("/home/nisaacdz/Downloads/cursor.png")
                     .unwrap()
                     .to_rgba8(),
+                    (2, 2)
             )),
             Box::new(SystemPointer),
         ]

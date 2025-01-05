@@ -92,8 +92,8 @@ pub struct SolidPointer {
 }
 
 impl SolidPointer {
-    pub fn new(image: RgbaImage) -> Self {
-        Self { image, hotspot: (0, 0) }
+    pub fn new(image: RgbaImage, hotspot: (u32, u32)) -> Self {
+        Self { image, hotspot }
     }
 }
 
@@ -101,11 +101,17 @@ impl Pointer for SolidPointer {
     fn resolve(&self, screen: &mut RgbaImage, position: (u32, u32)) {
         let (pointer_width, pointer_height) = (self.image.width(), self.image.height());
         let (screen_width, screen_height) = (screen.width(), screen.height());
+        let (hotspot_x, hotspot_y) = self.hotspot;
+        
         for x in 0..pointer_width {
             for y in 0..pointer_height {
-                let (i, j) = (x + position.0, y + position.1);
-                if i < screen_width && j < screen_height {
-                    let screen_pixel = screen.get_pixel_mut(i, j);
+                let (i, j) = (
+                    position.0 as i32 + x as i32 - hotspot_x as i32,
+                    position.1 as i32 + y as i32 - hotspot_y as i32,
+                );
+                
+                if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
+                    let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
                     let cursor_pixel = self.image.get_pixel(x, y);
                     let depth = cursor_pixel[3] as u32;
                     (0..4).for_each(|i| {
@@ -129,13 +135,19 @@ impl Pointer for SystemPointer {
         };
         let (pointer_width, pointer_height) = (pointer_image.width(), pointer_image.height());
         let (screen_width, screen_height) = (screen.width(), screen.height());
+        let hotspot = (8, 8); // Assume default system hotspot is center
+
         for x in 0..pointer_width {
             for y in 0..pointer_height {
-                let (i, j) = (x as i32 + position.0 as i32, y as i32 + position.1 as i32);
+                let (i, j) = (
+                    position.0 as i32 + x as i32 - hotspot.0 as i32,
+                    position.1 as i32 + y as i32 - hotspot.1 as i32,
+                );
+                
                 if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
                     let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
-                    let depth = 255;
                     let cursor_pixel = pointer_image.get_pixel(x, y);
+                    let depth = cursor_pixel[3] as u32;
                     (0..4).for_each(|i| {
                         screen_pixel[i] = ((cursor_pixel[i] as u32 * depth
                             + screen_pixel[i] as u32 * (255 - depth))

@@ -15,17 +15,17 @@ mod tests {
     #[test]
     fn test_generate_random_string() {
         let cache_dir = PathBuf::from("cache");
-        let data_dir = PathBuf::from("data");
+        let data_dir = PathBuf::from("output");
         CACHE_DIR.set(cache_dir).ok();
         DATA_DIR.set(data_dir).ok();
         update_pointer(1);
         update_frame_rate(24);
         record();
-        std::thread::sleep(Duration::from_secs(5));
+        std::thread::sleep(Duration::from_secs(12));
         stop();
-        std::thread::sleep(Duration::from_secs(5));
+        super::record::get_record_handle().lock().unwrap().take().map(|u| u.join());
         save_video();
-        std::thread::sleep(Duration::from_secs(15));
+        super::record::get_save_handle().lock().unwrap().take().map(|v| v.join());
     }
 }
 

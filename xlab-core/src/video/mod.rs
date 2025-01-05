@@ -1,18 +1,37 @@
-mod ffmpeg_bindings;
-use std::{path::PathBuf, ptr};
-use ffmpeg_bindings::*;
+use ffmpeg_sys_next::*;
+use std::ptr;
+use std::{ffi::CString, path::PathBuf};
 
-// Error codes from FFmpeg
-const AVERROR_EAGAIN: i32 = -11;
-const AVERROR_EOF: i32 = -541478725;
+use ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_H264;
+use xcap::image::RgbaImage;
+use yuvutils_rs::{
+    rgba_to_yuv420, YuvChromaSubsampling, YuvPlanarImageMut, YuvRange, YuvStandardMatrix,
+};
+
+pub struct EncoderConfig {
+    pub bitrate: i64,
+    pub gop_size: i32,
+    pub max_b_frames: i32,
+    pub pix_fmt: AVPixelFormat,
+}
+
+impl Default for EncoderConfig {
+    fn default() -> Self {
+        Self {
+            bitrate: 400_000,
+            gop_size: 30,
+            max_b_frames: 1,
+            pix_fmt: AVPixelFormat::AV_PIX_FMT_YUV420P,
+        }
+    }
+}
 
 pub struct VideoEncoder {
-    format_context: *mut AVFormatContext,
-    codec_context: *mut AVCodecContext,
-    stream: *mut AVStream,
-    frame: *mut AVFrame,
-    pkt: *mut AVPacket,
-    next_pts: i64,
+    resolution: (u32, u32),
+    fmt_ctx: *mut AVFormatContext,
+    codec_ctx: *mut AVCodecContext,
+    config: EncoderConfig,
+    frame_index: i64,
 }
 
 impl VideoEncoder {
@@ -20,209 +39,223 @@ impl VideoEncoder {
         output_path: PathBuf,
         frame_rate: u32,
         resolution: (u32, u32),
+        config: EncoderConfig,
     ) -> Result<Self, String> {
+        println!("output_path: {:?}", output_path);
+        let output_path = pathbuf_to_cstring(&output_path);
         unsafe {
-            let mut format_context: *mut AVFormatContext = ptr::null_mut();
-            let output_path_str = output_path.to_str().unwrap();
+            avformat_network_init();
 
-            // Deduce output format based on file extension (mp4)
-            let fmt = av_guess_format(ptr::null(), output_path_str.as_ptr() as *const i8, ptr::null());
-            if fmt.is_null() {
-                return Err("Could not deduce output format".to_string());
-            }
-            avformat_alloc_output_context2(&mut format_context, fmt, ptr::null(), output_path_str.as_ptr() as *const i8);
-            if format_context.is_null() {
-                return Err("Could not allocate output context".to_string());
+            // Allocate format context
+            let mut fmt_ctx = avformat_alloc_context();
+            let format_name = CString::new("mp4").unwrap();
+
+            let output_format =
+                av_guess_format(format_name.as_ptr(), output_path.as_ptr(), ptr::null());
+            if output_format.is_null() {
+                return Err("Failed to guess output format".to_string());
             }
 
-            // Find codec for video encoding (H.264 for MP4)
-            let codec = avcodec_find_encoder(AVCodecID_AV_CODEC_ID_H264);
+            if avformat_alloc_output_context2(
+                &mut fmt_ctx,
+                output_format,
+                format_name.as_ptr(),
+                output_path.as_ptr(),
+            ) < 0
+                || fmt_ctx.is_null()
+            {
+                return Err("Failed to allocate format context".to_string());
+            }
+
+            // Find the H.264 codec
+            let codec = avcodec_find_encoder(AV_CODEC_ID_H264);
             if codec.is_null() {
-                return Err("Could not find encoder".to_string());
+                return Err("H264 encoder not found".to_string());
             }
 
-            // Create a new stream for the video
-            let stream = avformat_new_stream(format_context, codec);
+            // Create a new stream
+            let stream = avformat_new_stream(fmt_ctx, codec);
             if stream.is_null() {
-                return Err("Could not create new stream".to_string());
+                return Err("Failed to create stream".to_string());
             }
 
-            // Allocate codec context
-            let codec_context = avcodec_alloc_context3(codec);
-            if codec_context.is_null() {
-                return Err("Could not allocate codec context".to_string());
+            // Allocate and configure codec context
+            let codec_ctx = avcodec_alloc_context3(codec);
+            if codec_ctx.is_null() {
+                return Err("Failed to allocate codec context".to_string());
             }
 
-            // Set video parameters (resolution, framerate, pixel format)
-            (*codec_context).width = resolution.0 as i32;
-            (*codec_context).height = resolution.1 as i32;
-            (*codec_context).time_base = AVRational { num: 1, den: frame_rate as i32 };
-            (*codec_context).framerate = AVRational { num: frame_rate as i32, den: 1 };
-            (*codec_context).pix_fmt = AVPixelFormat_AV_PIX_FMT_YUV420P;
+            (*codec_ctx).width = resolution.0 as i32;
+            (*codec_ctx).height = resolution.1 as i32;
+            (*codec_ctx).time_base = AVRational {
+                num: 1,
+                den: frame_rate as i32,
+            };
+            (*codec_ctx).bit_rate = config.bitrate;
+            (*codec_ctx).gop_size = config.gop_size;
+            (*codec_ctx).max_b_frames = config.max_b_frames;
+            (*codec_ctx).pix_fmt = config.pix_fmt;
 
-            // Set codec parameters and open the codec
-            if avcodec_open2(codec_context, codec, ptr::null_mut()) < 0 {
-                return Err("Could not open codec".to_string());
+            // Enable global headers if required by the format
+            if (*(*fmt_ctx).oformat).flags & AVFMT_GLOBALHEADER != 0 {
+                (*codec_ctx).flags |= AV_CODEC_FLAG_GLOBAL_HEADER as i32;
             }
 
-            // Allocate frame for encoding
-            let frame = av_frame_alloc();
-            if frame.is_null() {
-                return Err("Could not allocate frame".to_string());
-            }
-            (*frame).format = (*codec_context).pix_fmt;
-            (*frame).width = (*codec_context).width;
-            (*frame).height = (*codec_context).height;
-
-            // Allocate frame buffer
-            av_frame_get_buffer(frame, 32);
-
-            // Allocate packet for encoding
-            let pkt = av_packet_alloc();
-            if pkt.is_null() {
-                return Err("Could not allocate packet".to_string());
+            // Open the codec
+            if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
+                return Err("Failed to open codec".to_string());
             }
 
-            // Open output file
-            if avio_open(&mut (*format_context).pb, output_path_str.as_ptr() as *const i8, AVIO_FLAG_WRITE as i32) < 0 {
-                return Err("Could not open output file".to_string());
+            // Copy codec parameters to the stream
+            (*stream).codecpar = avcodec_parameters_alloc();
+            if (*stream).codecpar.is_null() {
+                return Err("Failed to allocate codec parameters".to_string());
             }
 
-            // Write header to the output file
-            avformat_write_header(format_context, ptr::null_mut());
+            if avcodec_parameters_from_context((*stream).codecpar, codec_ctx) < 0 {
+                return Err("Failed to copy codec parameters to stream".to_string());
+            }
+
+            // Set stream time base
+            (*stream).time_base = (*codec_ctx).time_base;
+
+            // Open the output file if required
+            if (*(*fmt_ctx).oformat).flags & AVFMT_NOFILE == 0 {
+                if avio_open(&mut (*fmt_ctx).pb, output_path.as_ptr(), AVIO_FLAG_WRITE) < 0 {
+                    return Err("Failed to open output file".to_string());
+                }
+            }
+
+            // Write the format header
+            if avformat_write_header(fmt_ctx, ptr::null_mut()) < 0 {
+                return Err("Failed to write format header".to_string());
+            }
 
             Ok(Self {
-                format_context,
-                codec_context,
-                stream,
-                frame,
-                pkt,
-                next_pts: 0,
+                resolution,
+                fmt_ctx,
+                codec_ctx,
+                config,
+                frame_index: 0,
             })
         }
     }
 
     pub fn push_frame(&mut self, image_path: &PathBuf) -> Result<(), String> {
+        print!("Pushing frame new frame; ");
+        let img = xcap::image::open(image_path)
+            .map_err(|_| "Failed to open image".to_string())?
+            .to_rgba8();
+        let yuv_pixels = yuv_conversion(&img);
+        let (width, height) = (self.resolution.0 as usize, self.resolution.1 as usize);
+
         unsafe {
-            // Load the image (PNG)
-            let img = xcap::image::open(image_path).map_err(|e| e.to_string())?.to_rgb8();
-            let width = img.width() as i32;
-            let height = img.height() as i32;
-
-            // Check if the image matches the encoder settings
-            if width != (*self.frame).width || height != (*self.frame).height {
-                return Err("Image dimensions do not match video dimensions".to_string());
+            let mut frame = av_frame_alloc();
+            if frame.is_null() {
+                return Err("Failed to allocate AVFrame".to_string());
             }
 
-            // Convert image to YUV420P format (you need to implement this)
-            let yuv_data = rgb_to_yuv420p(&img);
-            ptr::copy_nonoverlapping(yuv_data.as_ptr(), (*self.frame).data[0], yuv_data.len());
+            (*frame).format = self.config.pix_fmt as i32;
+            (*frame).width = width as i32;
+            (*frame).height = height as i32;
+            (*frame).pts = self.frame_index;
 
-            // Set PTS (presentation timestamp) for the frame
-            (*self.frame).pts = self.next_pts;
-            self.next_pts += 1;
-
-            // Make the frame writable before sending it to the encoder
-            av_frame_make_writable(self.frame);
-
-            // Send frame to the encoder
-            av_packet_unref(self.pkt);
-            let ret = avcodec_send_frame(self.codec_context, self.frame);
-            if ret < 0 {
-                return Err(format!("Error sending frame: {}", ret));
+            // Allocate buffer for the frame
+            if av_frame_get_buffer(frame, 32) < 0 {
+                av_frame_free(&mut frame);
+                return Err("Failed to allocate frame buffer".to_string());
             }
 
-            // Receive encoded packet and write it
-            while ret >= 0 {
-                let ret = avcodec_receive_packet(self.codec_context, self.pkt);
-                if ret == AVERROR_EAGAIN as i32 || ret == AVERROR_EOF as i32 {
-                    break;
-                } else if ret < 0 {
-                    return Err(format!("Error receiving packet: {}", ret));
+            // Copy YUV data to frame's buffers
+            ptr::copy_nonoverlapping(
+                yuv_pixels.y_plane.borrow().as_ptr(),
+                (*frame).data[0],
+                yuv_pixels.y_stride as usize * height,
+            );
+            ptr::copy_nonoverlapping(
+                yuv_pixels.u_plane.borrow().as_ptr(),
+                (*frame).data[1],
+                yuv_pixels.u_stride as usize * (height / 2),
+            );
+            ptr::copy_nonoverlapping(
+                yuv_pixels.v_plane.borrow().as_ptr(),
+                (*frame).data[2],
+                yuv_pixels.v_stride as usize * (height / 2),
+            );
+
+            // Send frame to encoder
+            if avcodec_send_frame(self.codec_ctx, frame) < 0 {
+                av_frame_free(&mut frame);
+                return Err("Failed to send frame to encoder".to_string());
+            }
+
+            // Retrieve encoded packets and write them
+            let mut packet = av_packet_alloc();
+            if packet.is_null() {
+                return Err("Failed to allocate AVPacket".to_string());
+            }
+
+            while avcodec_receive_packet(self.codec_ctx, packet) == 0 {
+                // Write the encoded packet to the output file
+                if av_interleaved_write_frame(self.fmt_ctx, packet) < 0 {
+                    av_packet_free(&mut packet);
+                    av_frame_free(&mut frame);
+                    return Err("Failed to write packet".to_string());
                 }
-
-                // Rescale packet timestamps
-                av_packet_rescale_ts(self.pkt, (*self.codec_context).time_base, (*self.stream).time_base);
-
-                // Write the packet to the output file
-                av_interleaved_write_frame(self.format_context, self.pkt);
             }
-            Ok(())
+
+            av_packet_free(&mut packet);
+            av_frame_free(&mut frame);
         }
+
+        println!("Frame {} pushed", self.frame_index);
+        self.frame_index += 1;
+        Ok(())
     }
 
     pub fn finalize(self) -> Result<(), String> {
+        println!("Finalizing video");
         unsafe {
-            // Write the trailer to finalize the video file
-            av_write_trailer(self.format_context);
-            avio_closep(&mut (*self.format_context).pb);
-            Ok(())
+            // Check if format context is valid
+            if self.fmt_ctx.is_null() {
+                return Err("Format context is null".to_string());
+            }
+
+            // Write trailer
+            let ret = av_write_trailer(self.fmt_ctx);
+            if ret < 0 {
+                return Err(format!("Failed to write trailer: {}", ret));
+            }
         }
+        Ok(())
     }
 }
 
 impl Drop for VideoEncoder {
     fn drop(&mut self) {
         unsafe {
-            av_frame_free(&mut self.frame);
-            av_packet_free(&mut self.pkt);
-            avcodec_free_context(&mut self.codec_context);
-            avformat_free_context(self.format_context);
+            avcodec_free_context(&mut self.codec_ctx);
+            avformat_free_context(self.fmt_ctx);
         }
     }
 }
 
-// RGB to YUV420P conversion (you should implement this conversion)
-fn rgb_to_yuv420p(rgb: &xcap::image::RgbImage) -> Vec<u8> {
-    let width = rgb.width() as usize;
-    let height = rgb.height() as usize;
-    let mut yuv = Vec::with_capacity(width * height * 3 / 2);
+fn yuv_conversion(image: &RgbaImage) -> YuvPlanarImageMut<u8> {
+    let mut yuv_image =
+        YuvPlanarImageMut::alloc(image.width(), image.height(), YuvChromaSubsampling::Yuv420);
 
-    // Convert RGB to Y
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = rgb.get_pixel(x as u32, y as u32);
-            let r = pixel[0] as f32;
-            let g = pixel[1] as f32;
-            let b = pixel[2] as f32;
+    rgba_to_yuv420(
+        &mut yuv_image,           // Target YUV image
+        image.as_raw(),           // RGBA input slice
+        image.width() * 4,        // RGBA stride (4 bytes per pixel)
+        YuvRange::Limited,        // Commonly used range
+        YuvStandardMatrix::Bt709, // Common standard for HD videos
+    )
+    .expect("RGBA to YUV420 conversion failed");
 
-            let y_val = (0.299 * r + 0.587 * g + 0.114 * b).round() as u8;
-            yuv.push(y_val);
-        }
-    }
+    yuv_image
+}
 
-    // Downsample U and V components (4:2:0 chroma subsampling)
-    let mut u_vals = Vec::with_capacity(width * height / 4);
-    let mut v_vals = Vec::with_capacity(width * height / 4);
-
-    for y in (0..height).step_by(2) {
-        for x in (0..width).step_by(2) {
-            let mut u = 0.0;
-            let mut v = 0.0;
-
-            for iy in 0..2 {
-                for ix in 0..2 {
-                    let px = rgb.get_pixel((x + ix) as u32, (y + iy) as u32);
-                    let r = px[0] as f32;
-                    let g = px[1] as f32;
-                    let b = px[2] as f32;
-
-                    u += (-0.1687 * r - 0.3313 * g + 0.5 * b).round();
-                    v += (0.5 * r - 0.4187 * g - 0.0813 * b).round();
-                }
-            }
-
-            u /= 4.0;
-            v /= 4.0;
-
-            u_vals.push(u as u8);
-            v_vals.push(v as u8);
-        }
-    }
-
-    // Append U and V to the YUV vector
-    yuv.extend_from_slice(&u_vals);
-    yuv.extend_from_slice(&v_vals);
-
-    yuv
+fn pathbuf_to_cstring(path: &PathBuf) -> CString {
+    CString::new(path.to_string_lossy().as_bytes()).expect("Failed to convert PathBuf to CString")
 }

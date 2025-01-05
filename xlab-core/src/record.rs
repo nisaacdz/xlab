@@ -38,12 +38,12 @@ fn get_options() -> &'static Mutex<RecordOptions> {
     })
 }
 
-pub fn get_record_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
+pub(crate) fn get_record_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
     RECORD_HANDLE.get_or_init(|| Mutex::new(None))
 }
 
-pub fn get_save_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
-    RECORD_HANDLE.get_or_init(|| Mutex::new(None))
+pub(crate) fn get_save_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
+    SAVE_HANDLE.get_or_init(|| Mutex::new(None))
 }
 
 pub fn get_save_progress() -> &'static Mutex<Option<SaveProgress>> {
@@ -108,19 +108,25 @@ pub fn save_video() {
         .lock()
         .unwrap()
         .replace(SaveProgress::Initializing);
-    std::thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         let record_options = get_options();
         let record_options = record_options.lock().unwrap();
         assert!(record_options.session_ended());
         let cache_dir = record_options.get_cache_dir().clone();
         let data_dir = record_options.get_data_dir().clone();
+        // create the data_dir if it does not exist and clear it if it does
+        if data_dir.exists() {
+            std::fs::remove_dir_all(&data_dir).unwrap();
+        }
+        std::fs::create_dir_all(&data_dir).unwrap();
         let last_idx = record_options.cache_count();
         let session_name = record_options.session_name.clone();
         let frame_rate = record_options.get_rate();
         let resolution = record_options.get_resolution();
         std::mem::drop(record_options);
         let output_path = generate_output_path(&data_dir, &session_name);
-        let mut video_encoder = super::video::VideoEncoder::initialize(output_path, frame_rate, resolution).unwrap();
+        let mut video_encoder =
+            super::video::VideoEncoder::initialize(output_path, frame_rate, resolution, Default::default()).unwrap();
         for cache_count in 1..=last_idx {
             get_save_progress()
                 .lock()
@@ -129,7 +135,12 @@ pub fn save_video() {
             // png image is at image_path
             // append the image to the video
             let image_path = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            video_encoder.push_frame(&image_path).unwrap();
+            // video_encoder.push_frame(&image_path).unwrap();
+            if let Ok(_) = video_encoder.push_frame(&image_path) {
+                
+            } else {
+                println!("error at frame number {cache_count}");
+            }
         }
 
         get_save_progress()
@@ -137,21 +148,19 @@ pub fn save_video() {
             .unwrap()
             .replace(SaveProgress::Finalizing);
 
+        // save video here
+        video_encoder.finalize().unwrap();
+
         if cache_dir.exists() {
             std::fs::remove_dir_all(cache_dir).unwrap();
         }
-        if data_dir.exists() {
-            std::fs::remove_dir_all(data_dir).unwrap();
-        }
-
-        // save video here
-        video_encoder.finalize().unwrap();
 
         get_save_progress()
             .lock()
             .unwrap()
             .replace(SaveProgress::Done);
     });
+    get_save_handle().lock().unwrap().replace(handle).map(|v| v.join());
 }
 
 pub fn stop() {
