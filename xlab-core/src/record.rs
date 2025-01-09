@@ -10,6 +10,8 @@ use xcap::{
     Monitor,
 };
 
+use crate::{get_app_cache_dir, log_new_recording, user::get_user_options};
+
 use super::options::{Pointer, RecordOptions};
 
 static MONITOR: OnceLock<Monitor> = OnceLock::new();
@@ -17,28 +19,44 @@ static OPTIONS: OnceLock<Mutex<RecordOptions>> = OnceLock::new();
 static RECORD_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_PROGRESS: OnceLock<Mutex<Option<SaveProgress>>> = OnceLock::new();
+static RECORDING_TASKS_POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
 
 pub type RgbaImage = ImageBuffer<Rgba<u8>, Vec<u8>>;
 
-fn get_monitor() -> &'static Monitor {
+pub fn get_monitor() -> &'static Monitor {
     MONITOR.get_or_init(move || xcap::Monitor::all().unwrap().into_iter().next().unwrap())
 }
 
-fn get_options() -> &'static Mutex<RecordOptions> {
+pub fn get_options() -> &'static Mutex<RecordOptions> {
     OPTIONS.get_or_init(move || {
         let user_options = super::user::get_user_options().lock().unwrap();
         let frame_rate = user_options.frame_rate;
         let resolution = user_options.resolution;
         let pointer = user_options.pointer;
-        let cache_dir = super::CACHE_DIR.get().unwrap().clone();
-        let data_dir = super::DATA_DIR.get().unwrap().clone();
+        // these are placeholders and are guaranteed to be replaced by the record function
+        let cache_dir = PathBuf::new();
+        let output_dir = get_app_cache_dir().unwrap().join("recordings");
         Mutex::new(RecordOptions::new(
-            pointer, frame_rate, resolution, cache_dir, data_dir,
+            pointer,
+            frame_rate,
+            resolution,
+            String::new(),
+            output_dir,
+            cache_dir,
         ))
     })
 }
 
-pub(crate) fn get_record_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
+fn get_recording_tasks_pool() -> &'static rayon::ThreadPool {
+    RECORDING_TASKS_POOL.get_or_init(|| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap()
+    })
+}
+
+pub fn get_record_handle() -> &'static Mutex<Option<std::thread::JoinHandle<()>>> {
     RECORD_HANDLE.get_or_init(|| Mutex::new(None))
 }
 
@@ -52,44 +70,54 @@ pub fn get_save_progress() -> &'static Mutex<Option<SaveProgress>> {
 
 pub fn record() {
     let handle = std::thread::spawn(move || {
-        let record_options = get_options();
-        let mut record_options_lock = record_options.lock().unwrap();
-        const ONE_MICRO: u64 = 1000_000;
-        let frame_rate = record_options_lock.get_rate();
-        let pointer = record_options_lock.get_pointer();
-        let cache_dir = record_options_lock.get_cache_dir().clone();
-        let session_name = generate_random_string(8);
-        record_options_lock.session_name = session_name.clone();
-        std::mem::drop(record_options_lock);
-        let mut background_tasks = Vec::new();
-        // create the cache_dir if it does not exist and clear it if it does
+        assert!(!get_options().lock().unwrap().is_recording());
+        let user_options_lock = get_user_options().lock().unwrap();
+        let pointer = user_options_lock.pointer;
+        let frame_rate = user_options_lock.frame_rate;
+        let resolution = user_options_lock.resolution;
+        let session_name = generate_random_string(12);
+        let cache_dir = get_app_cache_dir()
+            .unwrap()
+            .join(format!("cache_{session_name}"));
+        let output_dir = get_app_cache_dir().unwrap().join("recordings");
+        let new_record_options = RecordOptions::new(
+            pointer,
+            frame_rate,
+            resolution,
+            session_name.clone(),
+            output_dir,
+            cache_dir.clone(),
+        );
+        std::mem::drop(user_options_lock);
+        let record_options_mtx = get_options();
+        *record_options_mtx.lock().unwrap() = new_record_options;
         if cache_dir.exists() {
             std::fs::remove_dir_all(&cache_dir).unwrap();
         }
         std::fs::create_dir_all(&cache_dir).unwrap();
-        let wait_duration = Duration::from_micros(ONE_MICRO / frame_rate as u64);
+        const ONE_NANO: u64 = 1_000_000_000;
+        let wait_duration = Duration::from_nanos(ONE_NANO / frame_rate as u64);
 
-        while !record_options.lock().unwrap().session_ended() {
-            let start = std::time::Instant::now();
-            let cache_count = record_options.lock().unwrap().next_cache_count();
-            let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            let monitor = get_monitor();
-            let screen: RgbaImage = monitor.capture_image().unwrap();
-            let pointer_position = get_mouse_position();
-            background_tasks.push(std::thread::spawn(move || {
-                process(image_dir, pointer, screen, pointer_position)
-            }));
-            std::thread::sleep(
-                wait_duration
-                    .checked_sub(start.elapsed())
-                    .unwrap_or_default(),
-            );
-        }
-        for task in background_tasks {
-            task.join().unwrap();
-        }
-        // I don't think a thread should be able to join itself
-        // bad code : get_record_handle().lock().unwrap().take().unwrap().join().unwrap();
+        get_options().lock().unwrap().start_recording();
+
+        get_recording_tasks_pool().scope(|s| {
+            while record_options_mtx.lock().unwrap().is_recording() {
+                let start = std::time::Instant::now();
+                let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
+                let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
+                let screen = get_monitor().capture_image().unwrap();
+                let pointer_position = get_mouse_position();
+
+                s.spawn(move |_| {
+                    process(image_dir, pointer, screen, pointer_position);
+                });
+                std::thread::sleep(
+                    wait_duration
+                        .checked_sub(start.elapsed())
+                        .unwrap_or_default(),
+                );
+            }
+        });
     });
     let old_handle = get_record_handle().lock().unwrap().replace(handle);
     if let Some(old_handle) = old_handle {
@@ -111,22 +139,24 @@ pub fn save_video() {
     let handle = std::thread::spawn(move || {
         let record_options = get_options();
         let record_options = record_options.lock().unwrap();
-        assert!(record_options.session_ended());
-        let cache_dir = record_options.get_cache_dir().clone();
-        let data_dir = record_options.get_data_dir().clone();
-        // create the data_dir if it does not exist and clear it if it does
-        if data_dir.exists() {
-            std::fs::remove_dir_all(&data_dir).unwrap();
-        }
-        std::fs::create_dir_all(&data_dir).unwrap();
+        assert!(!record_options.is_recording());
+        let cache_dir = record_options.cache_dir().clone();
+        let output_dir = record_options.output_dir().clone();
+        // create the output directory if it doesn't exist
+        std::fs::create_dir_all(&output_dir).unwrap();
         let last_idx = record_options.cache_count();
         let session_name = record_options.session_name.clone();
         let frame_rate = record_options.get_rate();
         let resolution = record_options.get_resolution();
         std::mem::drop(record_options);
-        let output_path = generate_output_path(&data_dir, &session_name);
-        let mut video_encoder =
-            super::video::VideoEncoder::initialize(output_path, frame_rate, resolution, Default::default()).unwrap();
+        let output_path = generate_output_path(&output_dir, &session_name);
+        let mut video_encoder = super::video::VideoEncoder::initialize(
+            output_path.clone(),
+            frame_rate,
+            resolution,
+            Default::default(),
+        )
+        .unwrap();
         for cache_count in 1..=last_idx {
             get_save_progress()
                 .lock()
@@ -143,7 +173,6 @@ pub fn save_video() {
             .unwrap()
             .replace(SaveProgress::Finalizing);
 
-        // save video here
         video_encoder.finalize().unwrap();
 
         if cache_dir.exists() {
@@ -154,18 +183,27 @@ pub fn save_video() {
             .lock()
             .unwrap()
             .replace(SaveProgress::Done);
+
+        log_new_recording(
+            output_path,
+            get_options().lock().unwrap().recording_duration().unwrap(),
+        );
     });
-    get_save_handle().lock().unwrap().replace(handle).map(|v| v.join());
+    get_save_handle()
+        .lock()
+        .unwrap()
+        .replace(handle)
+        .map(|v| v.join());
 }
 
 pub fn stop() {
-    let record_options = get_options();
-    let record_options = record_options.lock().unwrap();
-    record_options.end_session();
-    //get_record_handle().lock().unwrap().take().unwrap().join().unwrap();
+    let mut ro = get_options().lock().unwrap();
+    let video_duration = ro.end_recording();
+    let corrected_frame_rate = ro.cache_count() / video_duration.unwrap().as_secs();
+    ro.frame_rate = corrected_frame_rate as u32;
 }
 
-pub fn process(
+fn process(
     image_path: PathBuf,
     pointer: &'static dyn Pointer,
     mut screen: RgbaImage,
@@ -182,7 +220,7 @@ fn get_mouse_position() -> (u32, u32) {
     }
 }
 
-fn generate_random_string(length: usize) -> String {
+pub fn generate_random_string(length: usize) -> String {
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
 
@@ -196,18 +234,42 @@ fn generate_random_string(length: usize) -> String {
 fn generate_cached_image_path(
     cache_dir: &PathBuf,
     session_name: &str,
-    cache_count: u32,
+    cache_count: u64,
 ) -> PathBuf {
     cache_dir.join(format!("{session_name}_{:07}.png", cache_count))
 }
 
-fn generate_output_path(data_dir: &PathBuf, session_name: &str) -> PathBuf {
-    data_dir.join(format!("__{session_name}__.mp4"))
+fn generate_output_path(output_dir: &PathBuf, session_name: &str) -> PathBuf {
+    output_dir.join(format!("__{session_name}__.mp4"))
 }
 
+pub fn move_recording(new_path: PathBuf) {
+    let session_name = get_options().lock().unwrap().session_name.clone();
+    let output_path = get_options()
+        .lock()
+        .map(|ro| generate_output_path(ro.output_dir(), &session_name))
+        .unwrap();
+    if output_path == new_path {
+        return;
+    };
+    if !new_path.exists() {
+        std::fs::create_dir_all(new_path.parent().unwrap()).unwrap();
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .read(true)
+        .open(&new_path)
+        .unwrap();
+    if let Err(_) = std::fs::rename(&output_path, &new_path) {
+        std::fs::copy(output_path, new_path).unwrap();
+    }
+}
+
+#[derive(serde::Serialize, Clone, Copy)]
 pub enum SaveProgress {
     Initializing,
-    Saving(u32, u32),
+    Saving(u64, u64),
     Finalizing,
     Done,
 }

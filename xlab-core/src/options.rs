@@ -1,16 +1,26 @@
-use std::{path::PathBuf, sync::Mutex};
-
+use std::{
+    path::PathBuf,
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 use xcap::image::RgbaImage;
 
+#[derive(Clone, Copy)]
+pub enum RecordingState {
+    Idle,
+    Recording(Instant),
+    Done(Duration),
+}
+
 pub struct RecordOptions {
-    pointer: &'static (dyn Pointer + Send + Sync),
-    frame_rate: u32,
-    resolution: (u32, u32),
-    cache_dir: PathBuf,
-    data_dir: PathBuf,
-    cache_count: Mutex<u32>,
-    session_ended: Mutex<bool>,
+    pub(crate) pointer: &'static (dyn Pointer + Send + Sync),
+    pub(crate) frame_rate: u32,
+    pub(crate) resolution: (u32, u32),
+    pub cache_count: Mutex<u64>,
+    recording_state: Mutex<RecordingState>,
     pub session_name: String,
+    pub output_dir: PathBuf,
+    pub cache_dir: PathBuf,
 }
 
 impl RecordOptions {
@@ -18,18 +28,43 @@ impl RecordOptions {
         pointer: &'static (dyn Pointer + Send + Sync),
         frame_rate: u32,
         resolution: (u32, u32),
+        session_name: String,
+        output_dir: PathBuf,
         cache_dir: PathBuf,
-        data_dir: PathBuf,
     ) -> Self {
         Self {
             pointer,
             frame_rate,
             resolution,
-            cache_dir,
-            data_dir,
             cache_count: Mutex::new(0),
-            session_ended: Mutex::new(false),
-            session_name: String::new(),
+            recording_state: Mutex::new(RecordingState::Idle),
+            session_name,
+            output_dir,
+            cache_dir,
+        }
+    }
+
+    pub fn start_recording(&self) {
+        *self.recording_state.lock().unwrap() = RecordingState::Recording(Instant::now())
+    }
+
+    pub fn is_recording(&self) -> bool {
+        matches!(
+            *self.recording_state.lock().unwrap(),
+            RecordingState::Recording(_)
+        )
+    }
+
+    pub fn end_recording(&self) -> Option<Duration> {
+        let mut recording_state = self.recording_state.lock().unwrap();
+        match *recording_state {
+            RecordingState::Idle => None,
+            RecordingState::Recording(instant) => {
+                let duration = instant.elapsed();
+                *recording_state = RecordingState::Done(duration);
+                Some(instant.elapsed())
+            }
+            RecordingState::Done(duration) => Some(duration),
         }
     }
 
@@ -41,37 +76,35 @@ impl RecordOptions {
         self.resolution
     }
 
-    pub fn cache_count(&self) -> u32 {
-        *self.cache_count.lock().unwrap()   
+    pub fn cache_count(&self) -> u64 {
+        *self.cache_count.lock().unwrap()
     }
 
-    pub fn next_cache_count(&self) -> u32 {
+    pub fn next_cache_count(&self) -> u64 {
         let mut cache_count = self.cache_count.lock().unwrap();
         *cache_count += 1;
         *cache_count
-    }
-
-    pub fn get_cache_dir(&self) -> &PathBuf {
-        &self.cache_dir
-    }
-
-    pub fn get_data_dir(&self) -> &PathBuf {
-        &self.data_dir
     }
 
     pub fn get_pointer(&self) -> &'static (dyn Pointer + Send + Sync) {
         self.pointer
     }
 
-    pub fn end_session(&self) {
-        let mut session_ended = self.session_ended.lock().unwrap();
-        *session_ended = true;
+    pub fn cache_dir(&self) -> &PathBuf {
+        &self.cache_dir
     }
 
-    pub fn session_ended(&self) -> bool {
-        *self.session_ended.lock().unwrap()
+    pub fn output_dir(&self) -> &PathBuf {
+        &self.output_dir
     }
 
+    pub fn recording_duration(&self) -> Option<Duration> {
+        match *self.recording_state.lock().unwrap() {
+            RecordingState::Idle => None,
+            RecordingState::Recording(instant) => Some(instant.elapsed()),
+            RecordingState::Done(duration) => Some(duration),
+        }
+    }
 }
 
 pub trait Pointer {
@@ -102,14 +135,14 @@ impl Pointer for SolidPointer {
         let (pointer_width, pointer_height) = (self.image.width(), self.image.height());
         let (screen_width, screen_height) = (screen.width(), screen.height());
         let (hotspot_x, hotspot_y) = self.hotspot;
-        
+
         for x in 0..pointer_width {
             for y in 0..pointer_height {
                 let (i, j) = (
                     position.0 as i32 + x as i32 - hotspot_x as i32,
                     position.1 as i32 + y as i32 - hotspot_y as i32,
                 );
-                
+
                 if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
                     let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
                     let cursor_pixel = self.image.get_pixel(x, y);
@@ -143,7 +176,7 @@ impl Pointer for SystemPointer {
                     position.0 as i32 + x as i32 - hotspot.0 as i32,
                     position.1 as i32 + y as i32 - hotspot.1 as i32,
                 );
-                
+
                 if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
                     let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
                     let cursor_pixel = pointer_image.get_pixel(x, y);

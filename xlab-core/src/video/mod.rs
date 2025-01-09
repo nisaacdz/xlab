@@ -11,8 +11,6 @@ use yuvutils_rs::{
 };
 
 pub struct EncoderConfig {
-    pub bitrate: i64,
-    pub gop_size: i32,
     pub max_b_frames: i32,
     pub pix_fmt: AVPixelFormat,
 }
@@ -20,27 +18,27 @@ pub struct EncoderConfig {
 impl Default for EncoderConfig {
     fn default() -> Self {
         Self {
-            bitrate: 400_000,
-            gop_size: 24,
             max_b_frames: 1,
             pix_fmt: AVPixelFormat::AV_PIX_FMT_YUV420P,
         }
     }
 }
 
+pub struct VideoEncodingError {}
+
 pub struct VideoEncoder {
     resolution: (u32, u32),
     fmt_ctx: *mut AVFormatContext,
     codec_ctx: *mut AVCodecContext,
     stream: *mut AVStream,
-    frame_index: i64,
+    image_index: i64,
     time_base: AVRational,
 }
 
 impl VideoEncoder {
     pub fn initialize(
         output_path: PathBuf,
-        frame_rate: u32,
+        image_rate: u32,
         resolution: (u32, u32),
         config: EncoderConfig,
     ) -> Result<Self, String> {
@@ -65,7 +63,12 @@ impl VideoEncoder {
             }
 
             // Open the output file
-            if avio_open(&mut av_io_context, output_path_cstr.as_ptr(), AVIO_FLAG_WRITE) < 0 {
+            if avio_open(
+                &mut av_io_context,
+                output_path_cstr.as_ptr(),
+                AVIO_FLAG_WRITE,
+            ) < 0
+            {
                 avformat_free_context(fmt_ctx);
                 return Err("Could not open output file".to_string());
             }
@@ -84,7 +87,6 @@ impl VideoEncoder {
                 avformat_free_context(fmt_ctx);
                 return Err("Could not allocate stream".to_string());
             }
-            (*stream).id = ((*fmt_ctx).nb_streams - 1) as i32;
 
             // Allocate the codec context for the encoder
             let mut codec_ctx = avcodec_alloc_context3(codec);
@@ -95,14 +97,14 @@ impl VideoEncoder {
 
             // Set codec parameters
             (*codec_ctx).codec_id = AV_CODEC_ID_H264;
-            (*codec_ctx).bit_rate = config.bitrate;
+            (*codec_ctx).bit_rate = compute_bit_rate(resolution, image_rate);
             (*codec_ctx).width = resolution.0 as i32;
             (*codec_ctx).height = resolution.1 as i32;
             (*codec_ctx).time_base = AVRational {
                 num: 1,
-                den: frame_rate as i32,
+                den: image_rate as i32,
             };
-            (*codec_ctx).gop_size = config.gop_size;
+            (*codec_ctx).gop_size = image_rate as i32;
             (*codec_ctx).max_b_frames = config.max_b_frames;
             (*codec_ctx).pix_fmt = config.pix_fmt;
 
@@ -137,7 +139,7 @@ impl VideoEncoder {
                 fmt_ctx,
                 codec_ctx,
                 stream,
-                frame_index: 0,
+                image_index: 1,
                 time_base: (*codec_ctx).time_base,
             })
         }
@@ -161,10 +163,10 @@ impl VideoEncoder {
             (*frame).format = (*self.codec_ctx).pix_fmt as i32;
             (*frame).width = self.resolution.0 as i32;
             (*frame).height = self.resolution.1 as i32;
-            (*frame).pts = self.frame_index;
+            (*frame).pts = self.image_index;
 
             // Allocate the buffers for the frame data
-            if av_frame_get_buffer(frame, 32) < 0 {
+            if av_frame_get_buffer(frame, 0) < 0 {
                 av_frame_free(&mut frame);
                 return Err("Could not allocate the video frame data".to_string());
             }
@@ -175,25 +177,49 @@ impl VideoEncoder {
                 return Err("Frame data is not writable".to_string());
             }
 
-            // Copy the YUV data to the frame
-            let y_size = (*frame).width as usize * (*frame).height as usize;
-            let uv_size = y_size / 4;
+            // Copy Y-plane data row by row
+            let y_plane = yuv_image.y_plane.borrow();
+            let y_stride = (*frame).linesize[0] as usize;
+            let y_width = self.resolution.0 as usize;
+            for i in 0..self.resolution.1 as usize {
+                let src_offset = i * y_width;
+                let dst_offset = i * y_stride;
+                ptr::copy_nonoverlapping(
+                    y_plane.as_ptr().add(src_offset),
+                    (*frame).data[0].add(dst_offset),
+                    y_width,
+                );
+            }
 
-            ptr::copy_nonoverlapping(
-                yuv_image.y_plane.borrow().as_ptr(),
-                (*frame).data[0],
-                y_size,
-            );
-            ptr::copy_nonoverlapping(
-                yuv_image.u_plane.borrow().as_ptr(),
-                (*frame).data[1],
-                uv_size,
-            );
-            ptr::copy_nonoverlapping(
-                yuv_image.v_plane.borrow().as_ptr(),
-                (*frame).data[2],
-                uv_size,
-            );
+            // Copy U-plane data row by row
+            let u_plane = yuv_image.u_plane.borrow();
+            let u_stride = (*frame).linesize[1] as usize;
+            let u_width = self.resolution.0 as usize / 2;
+            let u_height = self.resolution.1 as usize / 2;
+            for i in 0..u_height {
+                let src_offset = i * u_width;
+                let dst_offset = i * u_stride;
+                ptr::copy_nonoverlapping(
+                    u_plane.as_ptr().add(src_offset),
+                    (*frame).data[1].add(dst_offset),
+                    u_width,
+                );
+            }
+
+            // Copy V-plane data row by row
+            let v_plane = yuv_image.v_plane.borrow();
+            let v_stride = (*frame).linesize[2] as usize;
+            for i in 0..u_height {
+                let src_offset = i * u_width;
+                let dst_offset = i * v_stride;
+                ptr::copy_nonoverlapping(
+                    v_plane.as_ptr().add(src_offset),
+                    (*frame).data[2].add(dst_offset),
+                    u_width,
+                );
+            }
+
+            (3..(*frame).data.len()).for_each(|i| (*frame).data[i] = std::ptr::null_mut());
 
             // Send the frame to the encoder
             if avcodec_send_frame(self.codec_ctx, frame) < 0 {
@@ -211,7 +237,6 @@ impl VideoEncoder {
             // Receive encoded packets and write them
             while avcodec_receive_packet(self.codec_ctx, packet) == 0 {
                 av_packet_rescale_ts(packet, self.time_base, (*self.stream).time_base);
-                (*packet).stream_index = (*self.stream).index;
 
                 if av_interleaved_write_frame(self.fmt_ctx, packet) < 0 {
                     av_packet_free(&mut packet);
@@ -224,7 +249,7 @@ impl VideoEncoder {
             av_frame_free(&mut frame);
         }
 
-        self.frame_index += 1;
+        self.image_index += 1;
         Ok(())
     }
 
@@ -270,11 +295,11 @@ fn yuv_conversion(image: &RgbaImage) -> YuvPlanarImageMut<u8> {
         YuvPlanarImageMut::alloc(image.width(), image.height(), YuvChromaSubsampling::Yuv420);
 
     rgba_to_yuv420(
-        &mut yuv_image,           // Target YUV image
-        image.as_raw(),           // RGBA input slice
-        image.width() * 4,        // RGBA stride (4 bytes per pixel)
-        YuvRange::Limited,        // Commonly used range
-        YuvStandardMatrix::Bt709, // Common standard for HD videos
+        &mut yuv_image,    // Target YUV image
+        image.as_raw(),    // RGBA input slice
+        image.width() * 4, // RGBA stride (4 bytes per pixel)
+        YuvRange::Limited, // Commonly used range
+        YuvStandardMatrix::Bt709,
     )
     .expect("RGBA to YUV420 conversion failed");
 
@@ -283,4 +308,10 @@ fn yuv_conversion(image: &RgbaImage) -> YuvPlanarImageMut<u8> {
 
 fn pathbuf_to_cstring(path: &PathBuf) -> CString {
     CString::new(path.to_string_lossy().as_bytes()).expect("Failed to convert PathBuf to CString")
+}
+
+fn compute_bit_rate((width, height): (u32, u32), frame_rate: u32) -> i64 {
+    let resolution_factor = f64::powf(width as f64 * height as f64, 1.161);
+    let frame_rate_factor = f64::powf(frame_rate as f64, 0.585);
+    (resolution_factor * frame_rate_factor * 0.265) as i64
 }

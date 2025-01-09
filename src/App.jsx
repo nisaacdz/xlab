@@ -1,12 +1,17 @@
+// App.jsx
 import React, { useState } from "react";
+import { RecorderProvider } from "./context/RecorderContext";
 import EditorMode from "./components/EditorMode";
 import RecorderMode from "./components/RecorderMode";
-import RecordingsList from "./components/RecordingsList";
-import { ArrowPathIcon } from "@heroicons/react/24/outline"; // ✅ Correct alternative in v2
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import recorderIcon from "./assets/recorder.svg";
+import editorIcon from "./assets/editor.svg";
+import settingsIcon from "./assets/settings.svg";
 import "./App.css";
+import SettingsMode from "./components/SettingsMode";
 
 function App() {
-    const [mode, setMode] = useState("recorder"); // recorder | editor
+    const [mode, setMode] = useState("recorder"); // recorder | editor | settings
     const [currentRecording, setCurrentRecording] = useState(null);
 
     const handleViewRecording = (recording) => {
@@ -20,27 +25,29 @@ function App() {
     };
 
     return (
-        <main className="app-container flex flex-col w-full h-screen p-6 bg-gray-900 text-white">
-            {/* Header */}
-            <header className="glass w-full p-4 rounded-lg text-center text-lg font-semibold">
-                Screen Recorder
-            </header>
+        <RecorderProvider>
+            <main className="app-container flex flex-col items-center w-full h-screen p-6 bg-gray-900 text-white">
+                {/* Navigation Tabs */}
+                <div className="flex justify-evenly bg-gray-800 p-3 rounded-lg max-w-96 min-w-64">
+                    <button onClick={() => setMode("recorder")} className={`p-2 ${mode !== "recorder" ? "bg-gray-700 rounded-md" : ""}`}>
+                        <img src={recorderIcon} alt="Recorder" className="h-6 w-6" />
+                    </button>
+                    <button onClick={() => setMode("editor")} className={`p-2 ${mode !== "editor" ? "bg-gray-700 rounded-md" : ""}`}>
+                        <img src={editorIcon} alt="Editor" className="h-6 w-6" />
+                    </button>
+                    <button onClick={() => setMode("settings")} className={`p-2 ${mode !== "settings" ? "bg-gray-700 rounded-md" : ""}`}>
+                        <img src={settingsIcon} alt="Settings" className="h-6 w-6" />
+                    </button>
+                </div>
 
-            {/* Main Content */}
-            <div className={`flex w-full h-full mt-6 transition-all ${mode === "editor" ? "grid grid-cols-1" : "grid grid-cols-2 gap-4"}`}>
-                {mode === "recorder" && <RecorderMode />}
-                {mode === "editor" && <EditorMode />}
-                <RecordingsList onViewRecording={handleViewRecording} />
-            </div>
-
-            {/* Mode Switch Button */}
-            <button
-                onClick={handleBackToIdle}
-                className="fixed bottom-6 right-6 glass p-3 rounded-full shadow-lg transition hover:scale-105"
-            >
-                <ArrowPathIcon className="h-6 w-6 text-white" />
-            </button>
-        </main>
+                {/* Main Content */}
+                <div className="flex w-full h-full mt-6 transition-all">
+                    {mode === "recorder" && <RecorderMode />}
+                    {mode === "editor" && <EditorMode />}
+                    {mode === "settings" && <SettingsMode />}
+                </div>
+            </main>
+        </RecorderProvider>
     );
 }
 

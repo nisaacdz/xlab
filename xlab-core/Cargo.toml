@@ -8,4 +8,10 @@ xcap = "0.2.0"
 mouse_position = "0.1.4"
 rand = "0.8.5"
 ffmpeg-sys-next = { version = "7.1.0", features = ["build-lib-x264", "build-license-gpl"] }
-yuvutils-rs = "0.5.13"
+yuvutils-rs = "0.5.14"
+rayon = "1.10.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
+
+[profile.dev.package."*"]
+opt-level = 3
