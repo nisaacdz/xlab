@@ -28,7 +28,7 @@ function App() {
         <RecorderProvider>
             <main className="app-container flex flex-col items-center w-full h-screen p-6 bg-gray-900 text-white">
                 {/* Navigation Tabs */}
-                <div className="flex justify-evenly bg-gray-800 p-3 rounded-lg max-w-96 min-w-64">
+                <div className="flex justify-evenly bg-gray-800 p-3 rounded-lg max-w-96 min-w-64 w-[calc(100%/3)]">
                     <button onClick={() => setMode("recorder")} className={`p-2 ${mode !== "recorder" ? "bg-gray-700 rounded-md" : ""}`}>
                         <img src={recorderIcon} alt="Recorder" className="h-6 w-6" />
                     </button>

@@ -28,7 +28,7 @@ function RecorderMode() {
         frameRate,
         updateFrameRate,
         pointerBehavior,
-        updatePointeruBehavior,
+        updatePointerBehavior,
         availableResolutions,
         availableFrameRates,
         pastVideos,
@@ -83,14 +83,14 @@ function RecorderMode() {
 
     return (
         <div className="grid grid-cols-2 w-full h-full gap-6">
-            <div className="glass w-full h-[calc(100%)] p-6 rounded-lg grid grid-cols-1 gap-6">
+            <div className="glass w-full h-full p-6 rounded-lg grid grid-cols-1 gap-6">
                 <h2 className="text-xl font-semibold text-center">Recorder Options</h2>
 
                 {/* Resolution Selection */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <label className="text-lg font-medium">Resolution:</label>
                     <select
-                        className="glass p-2 rounded-md w-full bg-slate-700"
+                        className="glass p-2 rounded-md w-full text-slate-800"
                         value={resolution[1]}
                         onChange={(e) => updateResolution(e.target.selectedIndex)}
                         disabled={disabled}
@@ -107,7 +107,7 @@ function RecorderMode() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <label className="text-lg font-medium">Frame Rate:</label>
                     <select
-                        className="glass p-2 rounded-md w-full"
+                        className="glass p-2 rounded-md w-full text-slate-800"
                         value={frameRate}
                         onChange={(e) => updateFrameRate(parseInt(e.target.value))}
                         disabled={disabled}
@@ -124,7 +124,7 @@ function RecorderMode() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <label className="text-lg font-medium">Mouse Cursor:</label>
                     <select
-                        className="glass p-2 rounded-md w-full"
+                        className="glass p-2 rounded-md w-full text-slate-800"
                         value={pointerBehavior}
                         onChange={(e) => updatePointerBehavior(parseInt(e.target.value))}
                         disabled={disabled}
@@ -183,7 +183,7 @@ function RecorderMode() {
                     )}
                 </div>
             </div>
-            <div className="glass w-full h-[calc(100%)] p-6 rounded-lg overflow-y-auto">
+            <div className="w-full h-full relative glass p-6 rounded-lg">
                 <PastVideosList
                     pastVideos={pastVideos}
                     refreshPastVideos={refreshPastVideos}
@@ -210,24 +210,21 @@ const getFilename = (filePath) => filePath.split("/").pop();
 const PastVideosList = ({ pastVideos, refreshPastVideos, removeRecording }) => {
     return (
         <>
-            <h2 className="text-xl font-semibold mb-4">Recordings</h2>
-
-            <ul className="space-y-3">
-                {pastVideos && pastVideos.map((rec, index) => (
-                    <li key={index} className="glass p-3 rounded-md flex justify-between items-center">
-                        <div className="flex flex-col cursor-pointer items-start">
-                            <span className="font-medium">{getFilename(rec.file_path)}</span>
-                            <span className="text-sm text-gray-300">{formatDuration(rec.duration)}</span>
-                            <span className="text-sm text-gray-200">{formatDate(rec.time_recorded.secs_since_epoch)}</span>
-                        </div>
-                        <XMarkIcon className="h-5 w-5 text-red-500 cursor-pointer" onClick={() => removeRecording(index)} />
-                    </li>
-                ))}
-            </ul>
-
-            <button className="glass w-full mt-6 p-3 flex items-center justify-center rounded-md">
-                <PlusCircleIcon className="h-6 w-6 mr-2" /> Import Video
-            </button>
+            <h2 className="text-xl font-semibold">Recordings</h2>
+            <div className="absolute overflow-y-auto h-[calc(100%-72px)] w-full left-0 top-16 p-6 rounded-lg">
+                <ul className="space-y-3">
+                    {pastVideos && pastVideos.map((rec, index) => (
+                        <li key={index} className="glass p-3 rounded-md flex justify-between items-center">
+                            <div className="flex flex-col cursor-pointer items-start">
+                                <span className="font-medium">{getFilename(rec.file_path)}</span>
+                                <span className="text-sm text-gray-300">{formatDuration(rec.duration)}</span>
+                                <span className="text-sm text-gray-200">{formatDate(rec.time_recorded.secs_since_epoch)}</span>
+                            </div>
+                            <XMarkIcon className="h-5 w-5 text-red-500 cursor-pointer" onClick={() => removeRecording(index)} />
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </>
     );
 };
