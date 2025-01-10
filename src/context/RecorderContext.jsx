@@ -17,10 +17,28 @@ export const RecorderProvider = ({ children }) => {
         return [new_width, new_height];
     });
     const [frameRate, setFrameRate] = useState(DEFAULT_FRAME_RATE);
-    const [pointerBehavior, setPointerBehavior] = useState("system");
+    const [pointerBehavior, setPointerBehavior] = useState(0);
     const [availableResolutions, setAvailableResolutions] = useState(null);
     const [availableFrameRates, setAvailableFrameRates] = useState(null);
     const [pastVideos, setPastVideos] = useState(null);
+
+    const updateFrameRate = async (frameRate) => {
+        invoke("update_frame_rate", { frame_rate }).then(() => {
+            setFrameRate(frameRate);
+        });
+    };
+
+    const updateResolution = async (index) => {
+        invoke("update_resolution", { index }).then(() => {
+            setResolution(availableResolutions[index]);
+        });
+    }
+
+    const updatePointerBehavior = async (index) => {
+        invoke("update_pointer", { index }).then(() => {
+            setPointerBehavior(index);
+        });
+    };
 
     const refreshPastVideos = async () => {
         await invoke("past_videos")
@@ -44,11 +62,11 @@ export const RecorderProvider = ({ children }) => {
         <RecorderContext.Provider
             value={{
                 resolution,
-                setResolution,
+                updateResolution,
                 frameRate,
-                setFrameRate,
+                updateFrameRate,
                 pointerBehavior,
-                setPointerBehavior,
+                updatePointerBehavior,
                 availableResolutions,
                 availableFrameRates,
                 pastVideos,

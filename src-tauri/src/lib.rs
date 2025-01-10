@@ -27,9 +27,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             start_recording,
-            is_recording,
-            recording_duration,
+            recording_state,
             stop_recording,
+            save_recording,
+            discard_recording,
             available_resolutions,
             available_frame_rates,
             update_resolution,

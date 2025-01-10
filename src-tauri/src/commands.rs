@@ -1,15 +1,8 @@
-use std::time::Duration;
-
-use xlab_core::{record::SaveProgress, PreviousRecording};
+use xlab_core::{record::SaveProgress, options::RecordingState, PreviousRecording};
 
 #[tauri::command]
-pub fn recording_duration() -> Option<Duration> {
-    xlab_core::record::get_options().lock().unwrap().end_recording()
-}
-
-#[tauri::command]
-pub fn is_recording() -> bool {
-    xlab_core::record::get_options().lock().unwrap().is_recording()
+pub fn recording_state() -> RecordingState {
+    xlab_core::record::get_options().lock().unwrap().recording_state()
 }
 
 #[tauri::command]
@@ -25,7 +18,21 @@ pub fn stop_recording() {
             .unwrap()
             .take()
             .map(|u| u.join());
+}
+
+#[tauri::command]
+pub fn save_recording() {
+    xlab_core::record::get_record_handle()
+            .lock()
+            .unwrap()
+            .take()
+            .map(|u| u.join());
     xlab_core::record::save_video();
+}
+
+#[tauri::command]
+pub fn discard_recording() {
+    xlab_core::record::discard_video();
 }
 
 #[tauri::command]

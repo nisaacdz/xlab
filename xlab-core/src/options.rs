@@ -1,15 +1,34 @@
 use std::{
     path::PathBuf,
     sync::Mutex,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 use xcap::image::RgbaImage;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, serde::Serialize)]
 pub enum RecordingState {
     Idle,
+    #[serde(serialize_with = "serialize_instant")]
     Recording(Instant),
     Done(Duration),
+}
+
+fn serialize_instant<S>(instant: &Instant, sz: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let r_time = SystemTime::now().checked_sub(instant.elapsed()).unwrap_or(SystemTime::now());
+    sz.serialize_u128(r_time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis())
+}
+
+impl RecordingState {
+    pub fn duration(&self) -> Duration {
+        match self {
+            RecordingState::Idle => Duration::from_secs(0),
+            RecordingState::Recording(instant) => instant.elapsed(),
+            RecordingState::Done(duration) => *duration,
+        }
+    }
 }
 
 pub struct RecordOptions {
@@ -98,12 +117,8 @@ impl RecordOptions {
         &self.output_dir
     }
 
-    pub fn recording_duration(&self) -> Option<Duration> {
-        match *self.recording_state.lock().unwrap() {
-            RecordingState::Idle => None,
-            RecordingState::Recording(instant) => Some(instant.elapsed()),
-            RecordingState::Done(duration) => Some(duration),
-        }
+    pub fn recording_state(&self) -> RecordingState {
+        *self.recording_state.lock().unwrap()
     }
 }
 

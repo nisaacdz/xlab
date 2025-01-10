@@ -10,7 +10,9 @@ use xcap::{
     Monitor,
 };
 
-use crate::{get_app_cache_dir, log_new_recording, user::get_user_options};
+use crate::{
+    get_app_cache_dir, log_new_recording, options::RecordingState, user::get_user_options,
+};
 
 use super::options::{Pointer, RecordOptions};
 
@@ -111,6 +113,7 @@ pub fn record() {
                 s.spawn(move |_| {
                     process(image_dir, pointer, screen, pointer_position);
                 });
+
                 std::thread::sleep(
                     wait_duration
                         .checked_sub(start.elapsed())
@@ -124,8 +127,6 @@ pub fn record() {
         old_handle.join().unwrap();
     }
 }
-
-pub fn clear_cache() {}
 
 pub fn save_video() {
     assert!(matches!(
@@ -186,7 +187,7 @@ pub fn save_video() {
 
         log_new_recording(
             output_path,
-            get_options().lock().unwrap().recording_duration().unwrap(),
+            get_options().lock().unwrap().recording_state().duration(),
         );
     });
     get_save_handle()
@@ -194,6 +195,32 @@ pub fn save_video() {
         .unwrap()
         .replace(handle)
         .map(|v| v.join());
+}
+
+pub fn discard_video() {
+    let mut options = get_options().lock().unwrap();
+    if !matches!(options.recording_state(), RecordingState::Done(_)) {
+        return;
+    }
+    if options.cache_dir().exists() {
+        std::fs::remove_dir_all(options.cache_dir()).unwrap();
+    }
+    let user_options = super::user::get_user_options().lock().unwrap();
+    let frame_rate = user_options.frame_rate;
+    let resolution = user_options.resolution;
+    let pointer = user_options.pointer;
+    // these are placeholders and are guaranteed to be replaced by the record function
+    let cache_dir = PathBuf::new();
+    let output_dir = get_app_cache_dir().unwrap().join("recordings");
+    let new_options = RecordOptions::new(
+        pointer,
+        frame_rate,
+        resolution,
+        String::new(),
+        output_dir,
+        cache_dir,
+    );
+    *options = new_options;
 }
 
 pub fn stop() {
