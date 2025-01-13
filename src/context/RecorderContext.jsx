@@ -23,7 +23,7 @@ export const RecorderProvider = ({ children }) => {
     const [pastVideos, setPastVideos] = useState(null);
 
     const updateFrameRate = async (frameRate) => {
-        invoke("update_frame_rate", { frame_rate }).then(() => {
+        invoke("update_frame_rate", { frameRate }).then(() => {
             setFrameRate(frameRate);
         });
     };

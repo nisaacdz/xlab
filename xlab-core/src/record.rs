@@ -6,7 +6,7 @@ use std::{
 
 use mouse_position::mouse_position;
 use xcap::{
-    image::{ImageBuffer, Rgba},
+    image::RgbaImage,
     Monitor,
 };
 
@@ -21,9 +21,6 @@ static OPTIONS: OnceLock<Mutex<RecordOptions>> = OnceLock::new();
 static RECORD_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_PROGRESS: OnceLock<Mutex<Option<SaveProgress>>> = OnceLock::new();
-static RECORDING_TASKS_POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
-
-pub type RgbaImage = ImageBuffer<Rgba<u8>, Vec<u8>>;
 
 pub fn get_monitor() -> &'static Monitor {
     MONITOR.get_or_init(move || xcap::Monitor::all().unwrap().into_iter().next().unwrap())
@@ -46,15 +43,6 @@ pub fn get_options() -> &'static Mutex<RecordOptions> {
             output_dir,
             cache_dir,
         ))
-    })
-}
-
-fn get_recording_tasks_pool() -> &'static rayon::ThreadPool {
-    RECORDING_TASKS_POOL.get_or_init(|| {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(4)
-            .build()
-            .unwrap()
     })
 }
 
@@ -102,25 +90,22 @@ pub fn record() {
 
         get_options().lock().unwrap().start_recording();
 
-        get_recording_tasks_pool().scope(|s| {
-            while record_options_mtx.lock().unwrap().is_recording() {
-                let start = std::time::Instant::now();
-                let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
-                let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-                let screen = get_monitor().capture_image().unwrap();
-                let pointer_position = get_mouse_position();
+        while record_options_mtx.lock().unwrap().is_recording() {
+            let start = std::time::Instant::now();
+            let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
+            let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
+            let screen = get_monitor().capture_image().unwrap();
+            let pointer_position = get_mouse_position();
 
-                s.spawn(move |_| {
-                    process(image_dir, pointer, screen, pointer_position);
-                });
+            process(image_dir, pointer, screen, pointer_position);
 
-                std::thread::sleep(
-                    wait_duration
-                        .checked_sub(start.elapsed())
-                        .unwrap_or_default(),
-                );
-            }
-        });
+            std::thread::sleep(
+                wait_duration
+                    .checked_sub(start.elapsed())
+                    .unwrap_or_default(),
+            );
+        }
+        
     });
     let old_handle = get_record_handle().lock().unwrap().replace(handle);
     if let Some(old_handle) = old_handle {
@@ -129,6 +114,7 @@ pub fn record() {
 }
 
 pub fn save_video() {
+    assert!(!get_options().lock().unwrap().is_recording());
     assert!(matches!(
         get_save_progress().lock().unwrap().as_ref(),
         None | Some(SaveProgress::Done)
@@ -138,18 +124,19 @@ pub fn save_video() {
         .unwrap()
         .replace(SaveProgress::Initializing);
     let handle = std::thread::spawn(move || {
-        let record_options = get_options();
-        let record_options = record_options.lock().unwrap();
-        assert!(!record_options.is_recording());
-        let cache_dir = record_options.cache_dir().clone();
-        let output_dir = record_options.output_dir().clone();
-        // create the output directory if it doesn't exist
-        std::fs::create_dir_all(&output_dir).unwrap();
-        let last_idx = record_options.cache_count();
-        let session_name = record_options.session_name.clone();
-        let frame_rate = record_options.get_rate();
-        let resolution = record_options.get_resolution();
-        std::mem::drop(record_options);
+        get_record_handle().lock().unwrap().take().map(|u| u.join());
+        let record_options_mtx = get_options();
+        let record_options_lock = record_options_mtx.lock().unwrap();
+        let cache_dir = record_options_lock.cache_dir().clone();
+        let output_dir = record_options_lock.output_dir().clone();
+        let last_idx = record_options_lock.cache_count();
+        let session_name = record_options_lock.session_name.clone();
+        let frame_rate = record_options_lock.get_rate();
+        let resolution = record_options_lock.get_resolution();
+        std::mem::drop(record_options_lock);
+        if !output_dir.exists() {
+            std::fs::create_dir_all(&output_dir).unwrap();
+        }
         let output_path = generate_output_path(&output_dir, &session_name);
         let mut video_encoder = super::video::VideoEncoder::initialize(
             output_path.clone(),
@@ -225,9 +212,11 @@ pub fn discard_video() {
 
 pub fn stop() {
     let mut ro = get_options().lock().unwrap();
-    let video_duration = ro.end_recording();
-    let corrected_frame_rate = ro.cache_count() / video_duration.unwrap().as_secs();
-    ro.frame_rate = corrected_frame_rate as u32;
+    let video_duration = ro.end_recording().unwrap();
+    if video_duration.as_secs() > 5 {
+        let corrected_frame_rate = ro.cache_count() / video_duration.as_secs();
+        ro.frame_rate = corrected_frame_rate as u32;
+    }
 }
 
 fn process(
@@ -243,7 +232,7 @@ fn process(
 fn get_mouse_position() -> (u32, u32) {
     match mouse_position::Mouse::get_mouse_position() {
         mouse_position::Mouse::Position { x, y } => (x as u32, y as u32),
-        mouse_position::Mouse::Error => todo!(),
+        mouse_position::Mouse::Error => (0, 0),
     }
 }
 

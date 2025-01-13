@@ -2,6 +2,14 @@ import { PlusCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { useRecorder } from "../context/RecorderContext";
 import { invoke } from "@tauri-apps/api/core";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+
 
 const RecordingState = Object.freeze({
     IDLE: "Idle",
@@ -58,13 +66,13 @@ function RecorderMode() {
 
     const onStartRecording = () => {
         invoke("start_recording").then(() => {
-            getRecordingState().then(setRecordingState);
+            getRecordingState().then(setRecordingState).catch(e => console.error(e));
         });
     };
 
     const onStopRecording = () => {
         invoke("stop_recording").then(() => {
-            getRecordingState().then(setRecordingState);
+            getRecordingState().then(setRecordingState).catch(e => console.error(e));
         });
     };
 
@@ -134,6 +142,46 @@ function RecorderMode() {
                         <option value={2}>Solid</option>
                     </select>
                 </div>
+
+                {/* Solid pointer choice */}
+                {pointerBehavior >= 2 && (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <label className="text-lg font-medium">Choose design:</label>
+                        <Select
+                            value={pointerBehavior.toString()}
+                            onValueChange={(value) => updatePointerBehavior(parseInt(value))}
+                            disabled={disabled}
+                        >
+                            <SelectTrigger className="flex items-center gap-2 glass p-2 rounded-md w-full text-slate-800">
+                                <SelectValue placeholder={`Solid Pointer ${pointerBehavior - 1}`}>
+                                        <div className="flex items-center gap-2">
+                                            <img
+                                                src={`../assets/pointer_${pointerBehavior - 1}.png`}
+                                                alt={`Pointer Design ${pointerBehavior - 1}`}
+                                                className="w-6 h-6"
+                                            />
+                                            <span>Solid Pointer {pointerBehavior - 1}</span>
+                                        </div>
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[2, 3, 4, 5].map((value) => (
+                                    <SelectItem key={value} value={value.toString()}>
+                                        <div className="flex items-center gap-2">
+                                            <img
+                                                src={`../assets/pointer_${value - 1}.png`}
+                                                alt={`Pointer Design ${value - 1}`}
+                                                className="w-6 h-6"
+                                            />
+                                            <span>Solid Pointer {value - 1}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+
 
                 {/* Recording Controls */}
                 <div className="flex justify-center mt-6 gap-4">
@@ -213,7 +261,7 @@ const PastVideosList = ({ pastVideos, refreshPastVideos, removeRecording }) => {
             <h2 className="text-xl font-semibold">Recordings</h2>
             <div className="absolute overflow-y-auto h-[calc(100%-72px)] w-full left-0 top-16 p-6 rounded-lg">
                 <ul className="space-y-3">
-                    {pastVideos && pastVideos.map((rec, index) => (
+                    {pastVideos && pastVideos.reverse().map((rec, index) => (
                         <li key={index} className="glass p-3 rounded-md flex justify-between items-center">
                             <div className="flex flex-col cursor-pointer items-start">
                                 <span className="font-medium">{getFilename(rec.file_path)}</span>
@@ -232,15 +280,15 @@ const PastVideosList = ({ pastVideos, refreshPastVideos, removeRecording }) => {
 async function getRecordingState() {
     const state = await invoke("recording_state");
 
-    if (state === "Idle") {
+    if (state === RecordingState.IDLE) {
         return { state: RecordingState.IDLE };
     }
 
-    if (typeof state === "object" && "Recording" in state) {
+    if (typeof state === "object" && RecordingState.RECORDING in state) {
         return { state: RecordingState.RECORDING, instant: state.Recording };
     }
 
-    if (typeof state === "object" && "Done" in state) {
+    if (typeof state === "object" && RecordingState.DONE in state) {
         return { state: RecordingState.DONE, duration: state.Done };
     }
 
@@ -250,19 +298,19 @@ async function getRecordingState() {
 async function getSavingStateAsRecordingState() {
     const state = await invoke("saving_progress");
 
-    if (state === "Initializing") {
+    if (state === SavingState.INITIALIZING) {
         return { state: RecordingState.SAVING, progress: { state: SavingState.INITIALIZING, value: 0 } };
     }
 
-    if (typeof state === "object" && "Saving" in state) {
+    if (typeof state === "object" && SavingState.SAVING in state) {
         return { state: RecordingState.SAVING, progress: { state: SavingState.SAVING, value: state.Saving[0] / state.Saving[1] } };
     }
 
-    if (state === "Finalizing") {
+    if (state === SavingState.FINALIZING) {
         return { state: RecordingState.SAVING, progress: { state: SavingState.FINALIZING, value: 1 } };
     }
 
-    if (state === "Done") {
+    if (state === SavingState.DONE) {
         return { state: RecordingState.SAVING, progress: { state: SavingState.DONE, value: 1 } };
     }
 

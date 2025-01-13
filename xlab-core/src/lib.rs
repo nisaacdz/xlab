@@ -1,6 +1,17 @@
 use std::{path::PathBuf, sync::OnceLock, time::SystemTime};
 
+use record::get_monitor;
+use user::get_pointers;
+
 static APP_CACHE_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+/// This function when called first before app starts, initializes several static variables
+/// and prevents initializations during runtime
+/// When called after app has started, it does nothing
+pub fn init() {
+    let _ = get_pointers();
+    let _ = get_monitor();
+}
 
 pub fn set_app_cache_dir(app_cache_dir: PathBuf) {
     if !app_cache_dir.exists() {
@@ -99,7 +110,7 @@ mod tests {
     use std::time::Duration;
 
     use record::{record, save_video, stop};
-    use user::{update_frame_rate, update_pointer};
+    use user::{update_frame_rate, update_pointer, update_resolution};
 
     use super::*;
 
@@ -109,16 +120,13 @@ mod tests {
             .join("target")
             .join("app-cache");
         set_app_cache_dir(app_cache_dir);
-        update_pointer(1);
+        update_pointer(2);
         update_frame_rate(24);
+        let width = 1366 * 480 / 768;
+        update_resolution(width, 480);
         record();
         std::thread::sleep(Duration::from_secs(25));
         stop();
-        super::record::get_record_handle()
-            .lock()
-            .unwrap()
-            .take()
-            .map(|u| u.join());
         save_video();
         super::record::get_save_handle()
             .lock()

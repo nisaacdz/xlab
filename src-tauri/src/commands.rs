@@ -1,8 +1,11 @@
-use xlab_core::{record::SaveProgress, options::RecordingState, PreviousRecording};
+use xlab_core::{options::RecordingState, record::SaveProgress, PreviousRecording};
 
 #[tauri::command]
 pub fn recording_state() -> RecordingState {
-    xlab_core::record::get_options().lock().unwrap().recording_state()
+    xlab_core::record::get_options()
+        .lock()
+        .unwrap()
+        .recording_state()
 }
 
 #[tauri::command]
@@ -13,20 +16,10 @@ pub fn start_recording() {
 #[tauri::command]
 pub fn stop_recording() {
     xlab_core::record::stop();
-    xlab_core::record::get_record_handle()
-            .lock()
-            .unwrap()
-            .take()
-            .map(|u| u.join());
 }
 
 #[tauri::command]
 pub fn save_recording() {
-    xlab_core::record::get_record_handle()
-            .lock()
-            .unwrap()
-            .take()
-            .map(|u| u.join());
     xlab_core::record::save_video();
 }
 

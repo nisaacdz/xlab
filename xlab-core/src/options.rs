@@ -17,8 +17,15 @@ fn serialize_instant<S>(instant: &Instant, sz: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    let r_time = SystemTime::now().checked_sub(instant.elapsed()).unwrap_or(SystemTime::now());
-    sz.serialize_u128(r_time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis())
+    let r_time = SystemTime::now()
+        .checked_sub(instant.elapsed())
+        .unwrap_or(SystemTime::now());
+    sz.serialize_u128(
+        r_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+    )
 }
 
 impl RecordingState {
@@ -147,29 +154,7 @@ impl SolidPointer {
 
 impl Pointer for SolidPointer {
     fn resolve(&self, screen: &mut RgbaImage, position: (u32, u32)) {
-        let (pointer_width, pointer_height) = (self.image.width(), self.image.height());
-        let (screen_width, screen_height) = (screen.width(), screen.height());
-        let (hotspot_x, hotspot_y) = self.hotspot;
-
-        for x in 0..pointer_width {
-            for y in 0..pointer_height {
-                let (i, j) = (
-                    position.0 as i32 + x as i32 - hotspot_x as i32,
-                    position.1 as i32 + y as i32 - hotspot_y as i32,
-                );
-
-                if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
-                    let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
-                    let cursor_pixel = self.image.get_pixel(x, y);
-                    let depth = cursor_pixel[3] as u32;
-                    (0..4).for_each(|i| {
-                        screen_pixel[i] = ((cursor_pixel[i] as u32 * depth
-                            + screen_pixel[i] as u32 * (255 - depth))
-                            / 255) as u8;
-                    });
-                }
-            }
-        }
+        draw_image_on_screen(screen, position, &self.image, self.hotspot);
     }
 }
 
@@ -181,28 +166,33 @@ impl Pointer for SystemPointer {
             // get the current pointer appearance as rgba image
             RgbaImage::new(16, 16)
         };
-        let (pointer_width, pointer_height) = (pointer_image.width(), pointer_image.height());
-        let (screen_width, screen_height) = (screen.width(), screen.height());
-        let hotspot = (8, 8); // Assume default system hotspot is center
+        draw_image_on_screen(screen, position, &pointer_image, (0, 0));
+    }
+}
 
-        for x in 0..pointer_width {
-            for y in 0..pointer_height {
-                let (i, j) = (
-                    position.0 as i32 + x as i32 - hotspot.0 as i32,
-                    position.1 as i32 + y as i32 - hotspot.1 as i32,
-                );
+pub fn draw_image_on_screen(screen: &mut RgbaImage, coordinates: (u32, u32), image: &RgbaImage, image_hotspot: (u32, u32)) {
+    let (image_width, image_height) = (image.width(), image.height());
+    let (screen_width, screen_height) = (screen.width(), screen.height());
+    let (hotspot_x, hotspot_y) = image_hotspot;
 
-                if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
-                    let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
-                    let cursor_pixel = pointer_image.get_pixel(x, y);
-                    let depth = cursor_pixel[3] as u32;
-                    (0..4).for_each(|i| {
-                        screen_pixel[i] = ((cursor_pixel[i] as u32 * depth
-                            + screen_pixel[i] as u32 * (255 - depth))
-                            / 255) as u8;
-                    });
-                }
+    for x in 0..image_width {
+        for y in 0..image_height {
+            let (i, j) = (
+                coordinates.0 as i32 + x as i32 - hotspot_x as i32,
+                coordinates.1 as i32 + y as i32 - hotspot_y as i32,
+            );
+
+            if i >= 0 && i < screen_width as i32 && j >= 0 && j < screen_height as i32 {
+                let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
+                let cursor_pixel = image.get_pixel(x, y);
+                let depth = cursor_pixel[3] as u32;
+                (0..4).for_each(|i| {
+                    screen_pixel[i] = ((cursor_pixel[i] as u32 * depth
+                        + screen_pixel[i] as u32 * (255 - depth))
+                        / 255) as u8;
+                });
             }
         }
     }
+
 }
