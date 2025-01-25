@@ -113,7 +113,10 @@ pub fn record() {
     }
 }
 
-pub fn save_video() {
+pub fn save_video<F>(save_file_at_loc: F)
+where
+    F: FnOnce(Box<dyn FnOnce(Option<PathBuf>) + Send + 'static>) + Send + 'static,
+{
     assert!(!get_options().lock().unwrap().is_recording());
     assert!(matches!(
         get_save_progress().lock().unwrap().as_ref(),
@@ -137,7 +140,7 @@ pub fn save_video() {
         if !output_dir.exists() {
             std::fs::create_dir_all(&output_dir).unwrap();
         }
-        let output_path = generate_output_path(&output_dir, &session_name);
+        let mut output_path = generate_output_path(&output_dir, &session_name);
         let mut video_encoder = super::video::VideoEncoder::initialize(
             output_path.clone(),
             frame_rate,
@@ -172,10 +175,18 @@ pub fn save_video() {
             .unwrap()
             .replace(SaveProgress::Done);
 
-        log_new_recording(
-            output_path,
-            get_options().lock().unwrap().recording_state().duration(),
-        );
+        let save_fn = Box::new(move |save_path| {
+            if let Some(save_path) = save_path {
+                output_path = save_path;
+                move_recording(output_path.clone());
+            }
+            log_new_recording(
+                output_path,
+                get_options().lock().unwrap().recording_state().duration(),
+            );
+        });
+        
+        save_file_at_loc(save_fn);
     });
     get_save_handle()
         .lock()
