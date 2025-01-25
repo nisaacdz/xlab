@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use xlab_core::{options::RecordingState, record::SaveProgress, PreviousRecording};
 
 #[tauri::command]
@@ -20,7 +22,15 @@ pub fn stop_recording() {
 
 #[tauri::command]
 pub fn save_recording() {
-    xlab_core::record::save_video();
+    let save_at_chosen_loc = |save_fn| {
+        let temp_filename = format! {"rec_{}_xlab.mp4", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()};
+        tauri::api::dialog::FileDialogBuilder::new()
+            .set_file_name(&temp_filename)
+            .add_filter("MP4 Files", &["mp4"])
+            .save_file(save_fn);
+    };
+
+    xlab_core::record::save_video(save_at_chosen_loc);
 }
 
 #[tauri::command]

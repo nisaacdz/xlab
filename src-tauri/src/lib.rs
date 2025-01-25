@@ -8,10 +8,9 @@ use commands::*;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             #[cfg(not(debug_assertions))]
-            let app_cache_dir = tauri::Manager::path(app).app_cache_dir().unwrap();
+            let app_cache_dir = tauri::PathResolver::app_cache_dir(app).unwrap();
             #[cfg(debug_assertions)]
             let app_cache_dir = {
                 let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -23,6 +22,7 @@ pub fn run() {
                 path
             };
             xlab_core::set_app_cache_dir(app_cache_dir);
+            std::thread::spawn(move || xlab_core::init());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
