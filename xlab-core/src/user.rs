@@ -75,13 +75,13 @@ pub fn update_frame_rate(new_rate: u32) {
 
 /// Generates a 20x20 pointer with two concentric circles.
 fn draw_pointer_1() -> RgbaImage {
-    let size = 21;
+    let size = 361;
     let mut image = RgbaImage::new(size, size);
-    let inner_radius = 2;
+    let inner_radius = 36;
     let outer_radius = size as i32 / 2;
 
     let inner_color = Rgba([215, 85, 0, 255]); // Black, fully opaque
-    let outer_color = Rgba([215, 85, 0, 90]);  // Black, translucent
+    let outer_color = Rgba([215, 85, 0, 90]); // Black, translucent
 
     let center = size as i32 / 2;
 
@@ -100,20 +100,26 @@ fn draw_pointer_1() -> RgbaImage {
         }
     }
 
+    super::resize_image(&mut image, (32, 32));
+
     image
 }
 
 /// Generates a cross with a thickened center.
 fn draw_pointer_2() -> RgbaImage {
-    let size = 25;
+    let size = 361;
     let mut image = RgbaImage::new(size, size);
-    let thick = 3i32;
-    let length = size as i32 / 2;
+
+    let padding = size as i32 / 32;
+    let thick = size as i32 / 8;
+    let length = size as i32 / 2; // Scale length
     let center = size as i32 / 2;
-    let color = Rgba([0, 0, 0, 255]);
-    let outer_color = Rgba([255, 255, 255, 120]);
-    let inner_length = length - 2;
-    let inner_thick = thick - 2;
+
+    let color = Rgba([0, 0, 0, 255]); // Core color
+    let outer_color = Rgba([255, 255, 255, 120]); // Outer color
+
+    let inner_length = length - 2 * (size as i32 / 25);
+    let inner_thick = thick - (2 * padding);
 
     for i in -length..=length {
         for j in -thick..=thick {
@@ -127,14 +133,17 @@ fn draw_pointer_2() -> RgbaImage {
         }
     }
 
+    super::resize_image(&mut image, (21, 21));
+
     image
 }
 
 /// Generates concentric rings with a dot in the center.
 fn draw_pointer_3() -> RgbaImage {
-    let size = 31;
+    let size = 361;
+    let thickness = 24;
     let mut image = RgbaImage::new(size, size);
-    let radii = [5, 10, 15];
+    let radii = [size as i32 / 6, size as i32 / 3, size as i32 / 2];
     let center = size as i32 / 2;
     let color = Rgba([0, 0, 0, 255]);
 
@@ -142,50 +151,51 @@ fn draw_pointer_3() -> RgbaImage {
         for i in -radius..=radius {
             for j in -radius..=radius {
                 let dist_sq = i * i + j * j;
-                if dist_sq <= radius * radius && dist_sq >= (radius - 2) * (radius - 2) {
+                if dist_sq <= radius * radius
+                    && dist_sq >= (radius - thickness) * (radius - thickness)
+                {
                     image.put_pixel((center + i) as u32, (center + j) as u32, color);
                 }
             }
         }
     }
 
-    image.put_pixel(center as u32, center as u32, color);
+    super::resize_image(&mut image, (36, 36));
+
     image
 }
 
-/// Generates a diamond cross.
 fn draw_pointer_4() -> RgbaImage {
-    let size = 31;
+    let size = 361;
+    let thickness = 22;
+    let padding = 44;
     let mut image = RgbaImage::new(size, size);
-    let color = Rgba([0, 0, 0, 255]);
-    let outer_color = Rgba([255, 255, 255, 128]);
-    image.put_pixel(0, 0, color);
-    image.put_pixel(size - 1, 0, color);
-    for i in 1..size {
-        image.put_pixel(i, i, color);
-        image.put_pixel(i, i - 1, outer_color);
-        image.put_pixel(i - 1, i, outer_color);
+    let color = Rgba([0, 0, 0, 255]); // Core color
+    let padding_color = Rgba([255, 255, 255, 255]); // Padding color
 
-        image.put_pixel(i, size - i - 1, color);
-        image.put_pixel(i, size - i, outer_color);
-        image.put_pixel(i - 1, size - i - 1, outer_color);
+    // Draw the padding lines
+    for i in 0..size {
+        for j in 0..size {
+            if (i as i32 - j as i32).abs() < padding
+                || (i as i32 + j as i32 - size as i32).abs() < padding
+            {
+                image.put_pixel(i, j, padding_color);
+            }
+        }
     }
-    image.put_pixel(size - 1, size - 1, color);
-    image.put_pixel(0, size - 1, color);
+
+    // Draw the diagonal lines
+    for i in 11..(size - 11) {
+        for j in 11..(size - 11) {
+            if (i as i32 - j as i32).abs() < thickness
+                || (i as i32 + j as i32 - size as i32).abs() < thickness
+            {
+                image.put_pixel(i as u32, j as u32, color);
+            }
+        }
+    }
+
+    super::resize_image(&mut image, (21, 21));
 
     image
-}
-
-#[test]
-fn save_pointers() {
-    let pointers = [
-        ("pointer_1.png", draw_pointer_1()),
-        ("pointer_2.png", draw_pointer_2()),
-        ("pointer_3.png", draw_pointer_3()),
-        ("pointer_4.png", draw_pointer_4()),
-    ];
-
-    for (filename, img) in pointers.iter() {
-        img.save(filename).unwrap();
-    }
 }

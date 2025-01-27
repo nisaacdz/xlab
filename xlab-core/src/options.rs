@@ -170,7 +170,12 @@ impl Pointer for SystemPointer {
     }
 }
 
-pub fn draw_image_on_screen(screen: &mut RgbaImage, coordinates: (u32, u32), image: &RgbaImage, image_hotspot: (u32, u32)) {
+pub fn draw_image_on_screen(
+    screen: &mut RgbaImage,
+    coordinates: (u32, u32),
+    image: &RgbaImage,
+    image_hotspot: (u32, u32),
+) {
     let (image_width, image_height) = (image.width(), image.height());
     let (screen_width, screen_height) = (screen.width(), screen.height());
     let (hotspot_x, hotspot_y) = image_hotspot;
@@ -194,5 +199,4 @@ pub fn draw_image_on_screen(screen: &mut RgbaImage, coordinates: (u32, u32), ima
             }
         }
     }
-
 }

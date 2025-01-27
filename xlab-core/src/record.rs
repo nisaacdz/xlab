@@ -5,10 +5,7 @@ use std::{
 };
 
 use mouse_position::mouse_position;
-use xcap::{
-    image::RgbaImage,
-    Monitor,
-};
+use xcap::{image::RgbaImage, Monitor};
 
 use crate::{
     get_app_cache_dir, log_new_recording, options::RecordingState, user::get_user_options,
@@ -105,7 +102,6 @@ pub fn record() {
                     .unwrap_or_default(),
             );
         }
-        
     });
     let old_handle = get_record_handle().lock().unwrap().replace(handle);
     if let Some(old_handle) = old_handle {
@@ -185,7 +181,7 @@ where
                 get_options().lock().unwrap().recording_state().duration(),
             );
         });
-        
+
         save_file_at_loc(save_fn);
     });
     get_save_handle()

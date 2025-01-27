@@ -5,6 +5,9 @@ use serde::Deserialize;
 use user::get_pointers;
 
 static APP_CACHE_DIR: OnceLock<PathBuf> = OnceLock::new();
+use fast_image_resize::images::Image;
+use fast_image_resize::{PixelType, Resizer};
+use xcap::image::RgbaImage;
 
 /// This function when called first before app starts, initializes several static variables
 /// and prevents initializations during runtime
@@ -12,6 +15,29 @@ static APP_CACHE_DIR: OnceLock<PathBuf> = OnceLock::new();
 pub fn init() {
     let _ = get_pointers();
     let _ = get_monitor();
+}
+
+pub(crate) fn resize_image(img: &mut RgbaImage, (new_width, new_height): (u32, u32)) {
+    // Convert RgbaImage to fast_image_resize::images::Image
+    let (old_width, old_height) = img.dimensions();
+    let buffer_mut = unsafe {
+        std::slice::from_raw_parts_mut(
+            img.as_mut_ptr(),
+            old_width as usize * old_height as usize * 4,
+        )
+    };
+    let old_img = Image::from_slice_u8(old_width, old_height, buffer_mut, PixelType::U8x4).unwrap();
+
+    // Create a new image with the desired dimensions
+    let mut new_img = Image::new(new_width, new_height, PixelType::U8x4);
+
+    // Resize the image
+    Resizer::new()
+        .resize(&old_img, &mut new_img, None)
+        .expect("Failed to resize image");
+
+    // Replace the original image with the resized image
+    *img = RgbaImage::from_vec(new_width, new_height, new_img.into_vec()).unwrap();
 }
 
 pub fn set_app_cache_dir(app_cache_dir: PathBuf) {
@@ -67,7 +93,10 @@ pub fn delete_previous_recording(index: usize) {
 fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
     let duration = duration.as_secs();
     let recording = PreviousRecording {
-        time_recorded: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+        time_recorded: SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         duration,
         file_path,
         resolution: screen_resolution(),
@@ -82,7 +111,10 @@ fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
 pub struct PreviousRecording {
     time_recorded: u64, // time as duration since unix epoch
     duration: u64,
-    #[serde(serialize_with = "serialize_path_buf", deserialize_with="deserialize_path_buf")]
+    #[serde(
+        serialize_with = "serialize_path_buf",
+        deserialize_with = "deserialize_path_buf"
+    )]
     file_path: PathBuf,
     resolution: (u32, u32),
 }
@@ -95,7 +127,7 @@ where
 }
 
 fn deserialize_path_buf<'de, D>(dz: D) -> Result<PathBuf, D::Error>
-where 
+where
     D: serde::Deserializer<'de>,
 {
     let path_str = String::deserialize(dz)?;

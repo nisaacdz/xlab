@@ -161,7 +161,7 @@ impl VideoEncoder {
             .to_rgba8();
 
         if img.dimensions() != self.resolution {
-            resize_image(&mut img, self.resolution);
+            super::resize_image(&mut img, self.resolution);
         }
 
         // Convert the image to YUV420 format
@@ -327,30 +327,4 @@ fn compute_bit_rate((width, height): (u32, u32), frame_rate: u32) -> i64 {
     let resolution_factor = f64::powf(width as f64 * height as f64, 1.161);
     let frame_rate_factor = f64::powf(frame_rate as f64, 0.585);
     (resolution_factor * frame_rate_factor * 0.265) as i64
-}
-
-use fast_image_resize::images::Image;
-use fast_image_resize::{PixelType, Resizer};
-
-fn resize_image(img: &mut RgbaImage, (new_width, new_height): (u32, u32)) {
-    // Convert RgbaImage to fast_image_resize::images::Image
-    let (old_width, old_height) = img.dimensions();
-    let buffer_mut = unsafe {
-        std::slice::from_raw_parts_mut(
-            img.as_mut_ptr(),
-            old_width as usize * old_height as usize * 4,
-        )
-    };
-    let old_img = Image::from_slice_u8(old_width, old_height, buffer_mut, PixelType::U8x4).unwrap();
-
-    // Create a new image with the desired dimensions
-    let mut new_img = Image::new(new_width, new_height, PixelType::U8x4);
-
-    // Resize the image
-    Resizer::new()
-        .resize(&old_img, &mut new_img, None)
-        .expect("Failed to resize image");
-
-    // Replace the original image with the resized image
-    *img = RgbaImage::from_vec(new_width, new_height, new_img.into_vec()).unwrap();
 }

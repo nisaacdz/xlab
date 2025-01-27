@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useRecorder } from "../context/RecorderContext";
 import { invoke } from "@tauri-apps/api/core";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { X } from "lucide-react";
+import renderSolidPointer from "./SolidPointers";
 import {
   Select,
   SelectTrigger,
@@ -163,11 +164,7 @@ function RecorderMode() {
                   placeholder={`Solid Pointer ${pointerBehavior - 1}`}
                 >
                   <div className="flex items-center gap-2">
-                    <img
-                      src={`../assets/pointer_${pointerBehavior - 1}.png`}
-                      alt={`Pointer Design ${pointerBehavior - 1}`}
-                      className="w-6 h-6"
-                    />
+                    {renderSolidPointer(pointerBehavior)}
                     <span>Solid Pointer {pointerBehavior - 1}</span>
                   </div>
                 </SelectValue>
@@ -176,11 +173,7 @@ function RecorderMode() {
                 {[2, 3, 4, 5].map((value) => (
                   <SelectItem key={value} value={value.toString()}>
                     <div className="flex items-center gap-2">
-                      <img
-                        src={`../assets/pointer_${value - 1}.png`}
-                        alt={`Pointer Design ${value - 1}`}
-                        className="w-6 h-6"
-                      />
+                    {renderSolidPointer(value)}
                       <span>Solid Pointer {value - 1}</span>
                     </div>
                   </SelectItem>
