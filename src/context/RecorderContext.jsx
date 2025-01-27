@@ -44,6 +44,12 @@ export const RecorderProvider = ({ children }) => {
     await invoke("past_videos").then(setPastVideos).catch(console.error);
   };
 
+  const removePastVideo = async (index) => {
+    await invoke("remove_previous_recording_by_index", { index }).then(
+      refreshPastVideos,
+    );
+  };
+
   useEffect(() => {
     Promise.all([
       invoke("available_resolutions")
@@ -69,6 +75,7 @@ export const RecorderProvider = ({ children }) => {
         availableFrameRates,
         pastVideos,
         refreshPastVideos,
+        removePastVideo,
       }}
     >
       {children}

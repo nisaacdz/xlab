@@ -41,12 +41,19 @@ function RecorderMode() {
     availableFrameRates,
     pastVideos,
     refreshPastVideos,
+    removePastVideo,
   } = useRecorder();
 
   useEffect(() => {
     clearTimeout(timeoutRef.current);
     if (recordingState === null) {
-      getRecordingState().then(setRecordingState);
+      getSavingStateAsRecordingState().then((ss) => {
+        if (ss.state === RecordingState.SAVING) {
+          setRecordingState(ss);
+        } else {
+          getRecordingState().then(setRecordingState);
+        }
+      });
     } else if (recordingState.state === RecordingState.RECORDING) {
       timeoutRef.current = setTimeout(() => {
         getRecordingState().then(setRecordingState);
@@ -54,7 +61,9 @@ function RecorderMode() {
     } else if (recordingState.state === RecordingState.SAVING) {
       timeoutRef.current = setTimeout(() => {
         if (recordingState.progress.state === SavingState.DONE) {
-          refreshPastVideos().then(() => setRecordingState({ state: RecordingState.IDLE }));
+          refreshPastVideos().then(() =>
+            setRecordingState({ state: RecordingState.IDLE }),
+          );
         } else {
           getSavingStateAsRecordingState().then(setRecordingState);
         }
@@ -99,32 +108,33 @@ function RecorderMode() {
 
   return (
     <div className="grid grid-cols-2 w-full h-full gap-6">
-      <div className="glass w-full h-full p-6 rounded-lg grid grid-cols-1 gap-6">
+      <div className="glass w-full h-full p-6 flex flex-col rounded-lg gap-6">
         <h2 className="text-xl font-semibold text-center">Recorder Options</h2>
-
-        {/* Resolution Selection */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <label className="text-lg font-medium">Resolution:</label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-4">
+          {/* Resolution Selection */}
+          <label className="text-lg font-medium text-left md:text-right">
+            Resolution:
+          </label>
           <select
-            className="glass p-2 rounded-md w-full text-slate-800"
+            className="glass p-2 rounded-md w-full text-slate-800 cursor-pointer mb-4 md:mb-0 col-span-2"
             value={resolution[1]}
             onChange={(e) => updateResolution(e.target.selectedIndex)}
             disabled={disabled}
           >
             {availableResolutions &&
               availableResolutions.map((res, index) => (
-                <option key={index} value={res[1]}>
+                <option key={index} value={res[1]} className="cursor-pointer">
                   {res[1]}
                 </option>
               ))}
           </select>
-        </div>
 
-        {/* Frame Rate Selection */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <label className="text-lg font-medium">Frame Rate:</label>
+          {/* Frame Rate Selection */}
+          <label className="text-lg font-medium text-left md:text-right">
+            Frame Rate:
+          </label>
           <select
-            className="glass p-2 rounded-md w-full text-slate-800"
+            className="glass p-2 rounded-md w-full text-slate-800 cursor-pointer mb-4 md:mb-0 col-span-2"
             value={frameRate}
             onChange={(e) => updateFrameRate(parseInt(e.target.value))}
             disabled={disabled}
@@ -136,13 +146,13 @@ function RecorderMode() {
                 </option>
               ))}
           </select>
-        </div>
 
-        {/* Mouse Cursor Behavior */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <label className="text-lg font-medium">Mouse Cursor:</label>
+          {/* Mouse Cursor Behavior */}
+          <label className="text-lg font-medium text-left md:text-right">
+            Mouse Cursor:
+          </label>
           <select
-            className="glass p-2 rounded-md w-full text-slate-800"
+            className="glass p-2 rounded-md w-full text-slate-800 cursor-pointer mb-4 md:mb-0 col-span-2"
             value={pointerBehavior}
             onChange={(e) => updatePointerBehavior(parseInt(e.target.value))}
             disabled={disabled}
@@ -151,41 +161,44 @@ function RecorderMode() {
             <option value={1}>System</option>
             <option value={2}>Solid</option>
           </select>
-        </div>
 
-        {/* Solid pointer choice */}
-        {pointerBehavior >= 2 && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <label className="text-lg font-medium">Choose design:</label>
-            <Select
-              value={pointerBehavior.toString()}
-              onValueChange={(value) => updatePointerBehavior(parseInt(value))}
-              disabled={disabled}
-            >
-              <SelectTrigger className="flex items-center glass p-2 rounded-md w-full text-slate-800">
-                <SelectValue
-                  placeholder={`Solid Pointer ${pointerBehavior - 1}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {renderSolidPointer(pointerBehavior)}
-                    <span>Solid Pointer {pointerBehavior - 1}</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="flex items-center p-2 bg-slate-500 w-full">
-                {[2, 3, 4, 5].map((value) => (
-                  <SelectItem key={value} value={value.toString()}>
+          {/* Solid pointer choice */}
+          {pointerBehavior >= 2 && (
+            <>
+              <label className="text-lg font-medium text-left md:text-right">
+                Choose design:
+              </label>
+              <Select
+                value={pointerBehavior.toString()}
+                onValueChange={(value) =>
+                  updatePointerBehavior(parseInt(value))
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger className="glass p-2 rounded-md w-full text-slate-800 cursor-pointer col-span-2">
+                  <SelectValue
+                    placeholder={`Solid Pointer ${pointerBehavior - 1}`}
+                  >
                     <div className="flex gap-2 h-5 my-2 w-full">
-                      {renderSolidPointer(value)}
-                      <span>Solid Pointer {value - 1}</span>
+                      {renderSolidPointer(pointerBehavior)}
+                      <span>Solid Pointer {pointerBehavior - 1}</span>
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="flex items-center p-2 bg-slate-500 pr-6">
+                  {[2, 3, 4, 5].map((value) => (
+                    <SelectItem key={value} value={value.toString()}>
+                      <div className="flex gap-2 h-5 my-2 w-full cursor-pointer">
+                        {renderSolidPointer(value)}
+                        <span>Solid Pointer {value - 1}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
         {/* Recording Controls */}
         <div className="flex justify-center mt-6 gap-4">
           {(!recordingState ||
@@ -249,9 +262,7 @@ function RecorderMode() {
         <PastVideosList
           pastVideos={pastVideos}
           refreshPastVideos={refreshPastVideos}
-          removeRecording={(index) =>
-            console.log("Remove recording at index", index)
-          }
+          removeRecording={removePastVideo}
         />
       </div>
     </div>
@@ -272,34 +283,35 @@ const formatDate = (secsSinceEpoch) => {
 const getFilename = (filePath) => filePath.split("/").pop();
 
 const PastVideosList = ({ pastVideos, removeRecording }) => {
+  pastVideos = pastVideos ? [...pastVideos].reverse() : [];
   return (
     <>
       <h2 className="text-xl font-semibold">Recordings</h2>
       <div className="absolute overflow-y-auto h-[calc(100%-72px)] w-full left-0 top-16 p-6 rounded-lg">
         <ul className="space-y-3">
-          {pastVideos &&
-            [...pastVideos].reverse().map((rec, index) => (
-              <li
-                key={index}
-                className="glass p-3 rounded-md flex justify-between items-center"
-              >
-                <div className="flex flex-col cursor-pointer items-start">
-                  <span className="font-medium">
-                    {getFilename(rec.file_path)}
-                  </span>
-                  <span className="text-sm text-gray-300">
-                    {formatDuration(rec.duration)}
-                  </span>
-                  <span className="text-sm text-gray-200">
-                    {formatDate(rec.time_recorded)}
-                  </span>
-                </div>
-                <X
-                  className="h-5 w-5 text-red-500 cursor-pointer"
-                  onClick={() => removeRecording(index)}
-                />
-              </li>
-            ))}
+          {pastVideos.map((rec, index) => (
+            <li
+              key={index}
+              className="glass p-2 rounded-md flex justify-between items-center"
+            >
+              <div className="flex flex-col cursor-pointer items-start">
+                <span className="font-medium">
+                  {getFilename(rec.file_path)}
+                </span>
+                <span className="text-sm text-gray-300">
+                  {formatDuration(rec.duration)}
+                </span>
+                <span className="text-sm text-gray-200">
+                  {formatDate(rec.time_recorded)}
+                </span>
+              </div>
+              <X
+                className="h-5 w-5 text-red-500 cursor-pointer"
+                title="Remove recording from list"
+                onClick={() => removeRecording(pastVideos.length - index - 1)}
+              />
+            </li>
+          ))}
         </ul>
       </div>
     </>
