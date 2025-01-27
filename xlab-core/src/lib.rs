@@ -90,8 +90,13 @@ pub fn delete_previous_recording(index: usize) {
     std::fs::write(completed_recordings_log(), serialized).unwrap();
 }
 
-fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
-    let duration = duration.as_secs();
+fn log_new_recording(file_path: PathBuf, duration: u64) {
+    let mut recordings = previous_recordings();
+
+    if let Some(index) = recordings.iter().position(|v| &v.file_path == &file_path) {
+        recordings.remove(index);
+    }
+
     let recording = PreviousRecording {
         time_recorded: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -101,7 +106,7 @@ fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
         file_path,
         resolution: screen_resolution(),
     };
-    let mut recordings = previous_recordings();
+
     recordings.push(recording);
     let serialized = serde_json::to_string(&recordings).unwrap();
     std::fs::write(completed_recordings_log(), serialized).unwrap();

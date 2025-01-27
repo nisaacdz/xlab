@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRecorder } from "../context/RecorderContext";
 import { invoke } from "@tauri-apps/api/core";
 import { X } from "lucide-react";
