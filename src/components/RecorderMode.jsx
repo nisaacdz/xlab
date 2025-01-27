@@ -28,6 +28,7 @@ const SavingState = Object.freeze({
 
 function RecorderMode() {
   const [recordingState, setRecordingState] = useState(null);
+  const timeoutRef = useRef(null);
 
   const {
     resolution,
@@ -43,22 +44,24 @@ function RecorderMode() {
   } = useRecorder();
 
   useEffect(() => {
+    clearTimeout(timeoutRef.current);
     if (recordingState === null) {
       getRecordingState().then(setRecordingState);
     } else if (recordingState.state === RecordingState.RECORDING) {
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         getRecordingState().then(setRecordingState);
       }, 200);
     } else if (recordingState.state === RecordingState.SAVING) {
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         if (recordingState.progress.state === SavingState.DONE) {
-          setRecordingState({ state: RecordingState.IDLE });
-          refreshPastVideos();
+          refreshPastVideos().then(() => setRecordingState({ state: RecordingState.IDLE }));
         } else {
           getSavingStateAsRecordingState().then(setRecordingState);
         }
       }, 200);
     }
+
+    return () => clearTimeout(timeoutRef.current);
   }, [recordingState]);
 
   const disabled = !(
