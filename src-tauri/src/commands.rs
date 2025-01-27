@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+use tauri_plugin_dialog::DialogExt;
 use xlab_core::{options::RecordingState, record::SaveProgress, PreviousRecording};
 
 #[tauri::command]
@@ -22,12 +23,22 @@ pub fn stop_recording() {
 
 #[tauri::command]
 pub fn save_recording() {
-    let save_at_chosen_loc = |save_fn| {
+    let save_at_chosen_loc = |save_fn: Box<dyn FnOnce(Option<std::path::PathBuf>) + Send>| {
         let temp_filename = format! {"rec_{}_xlab.mp4", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()};
-        tauri::api::dialog::FileDialogBuilder::new()
-            .set_file_name(&temp_filename)
-            .add_filter("MP4 Files", &["mp4"])
-            .save_file(save_fn);
+        let dialog = DialogExt::dialog(super::APP_HANDLE.get().unwrap());
+        dialog.file()
+        .set_file_name(&temp_filename)
+        .add_filter("MP4 Files", &["mp4"])
+        .save_file(move |filepath| {
+            match filepath {
+                Some(path) => {
+                    save_fn(path.into_path().ok());
+                }
+                None => {
+                    save_fn(None)
+                }
+            }
+        });
     };
 
     xlab_core::record::save_video(save_at_chosen_loc);

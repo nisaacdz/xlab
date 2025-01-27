@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::OnceLock, time::SystemTime};
 
 use record::get_monitor;
+use serde::Deserialize;
 use user::get_pointers;
 
 static APP_CACHE_DIR: OnceLock<PathBuf> = OnceLock::new();
@@ -66,7 +67,7 @@ pub fn delete_previous_recording(index: usize) {
 fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
     let duration = duration.as_secs();
     let recording = PreviousRecording {
-        time_recorded: SystemTime::now(),
+        time_recorded: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
         duration,
         file_path,
         resolution: screen_resolution(),
@@ -79,9 +80,9 @@ fn log_new_recording(file_path: PathBuf, duration: std::time::Duration) {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct PreviousRecording {
-    time_recorded: SystemTime,
+    time_recorded: u64, // time as duration since unix epoch
     duration: u64,
-    #[serde(serialize_with = "serialize_path_buf")]
+    #[serde(serialize_with = "serialize_path_buf", deserialize_with="deserialize_path_buf")]
     file_path: PathBuf,
     resolution: (u32, u32),
 }
@@ -91,6 +92,14 @@ where
     S: serde::Serializer,
 {
     sz.serialize_str(path_buf.to_str().unwrap())
+}
+
+fn deserialize_path_buf<'de, D>(dz: D) -> Result<PathBuf, D::Error>
+where 
+    D: serde::Deserializer<'de>,
+{
+    let path_str = String::deserialize(dz)?;
+    Ok(PathBuf::from(path_str))
 }
 
 fn completed_recordings_log() -> PathBuf {
@@ -127,7 +136,7 @@ mod tests {
         record();
         std::thread::sleep(Duration::from_secs(25));
         stop();
-        save_video();
+        save_video(|save_fn| save_fn(None));
         super::record::get_save_handle()
             .lock()
             .unwrap()

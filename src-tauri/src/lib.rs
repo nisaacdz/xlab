@@ -1,16 +1,20 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod commands;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::OnceLock};
 
 use commands::*;
+use tauri::AppHandle;
+
+pub static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 #[allow(unused_variables)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             #[cfg(not(debug_assertions))]
-            let app_cache_dir = tauri::PathResolver::app_cache_dir(app).unwrap();
+            let app_cache_dir = tauri::Manager::path(app).app_cache_dir().expect("failed to get app cache dir");
             #[cfg(debug_assertions)]
             let app_cache_dir = {
                 let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -21,6 +25,7 @@ pub fn run() {
                 }
                 path
             };
+            APP_HANDLE.set(app.handle().clone()).expect("failed to set app handle");
             xlab_core::set_app_cache_dir(app_cache_dir);
             std::thread::spawn(move || xlab_core::init());
             Ok(())
