@@ -2,17 +2,17 @@ import React from "react";
 
 const CircleWithRing = () => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21">
+    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360">
       {/* Outer ring */}
-      <circle cx="10.5" cy="10.5" r="10.5" fill="rgba(215, 85, 0, 0.35)" />
+      <circle cx="180" cy="180" r="180" fill="rgba(215, 85, 0, 0.35)" />
       {/* Inner core */}
-      <circle cx="10.5" cy="10.5" r="3.5" fill="rgb(215, 85, 0)" />
+      <circle cx="180" cy="180" r="60" fill="rgb(215, 85, 0)" />
     </svg>
   );
 };
 
 const CrossWithPadding = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
+  <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360">
     {/* Padding around the cross */}
     <rect x="0" y="158" width="360" height="44" fill="rgb(255, 255, 255)" />
     <rect x="158" y="0" width="44" height="360" fill="rgb(255, 255, 255)" />
@@ -27,7 +27,7 @@ const CrossWithPadding = () => (
 );
 
 const ConcentricCircles = () => (
-  <svg width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360">
     {/* Outer Circle */}
     <circle cx="180" cy="180" r="168" stroke="black" strokeWidth="24" fill="none" />
     
@@ -40,7 +40,7 @@ const ConcentricCircles = () => (
 );
 
 const DiagonalCross = () => (
-  <svg width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360">
     {/* Define the padding around the diagonal lines */}
     <line x1="360" y1="0" x2="0" y2="360" stroke="white" strokeWidth="44" />
     <line x1="0" y1="0" x2="360" y2="360" stroke="white" strokeWidth="44" />

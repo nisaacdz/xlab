@@ -159,7 +159,7 @@ function RecorderMode() {
               onValueChange={(value) => updatePointerBehavior(parseInt(value))}
               disabled={disabled}
             >
-              <SelectTrigger className="flex items-center gap-2 glass p-2 rounded-md w-full text-slate-800">
+              <SelectTrigger className="flex items-center glass p-2 rounded-md w-full text-slate-800">
                 <SelectValue
                   placeholder={`Solid Pointer ${pointerBehavior - 1}`}
                 >
@@ -169,11 +169,11 @@ function RecorderMode() {
                   </div>
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="flex items-center p-2 bg-slate-500 w-full">
                 {[2, 3, 4, 5].map((value) => (
                   <SelectItem key={value} value={value.toString()}>
-                    <div className="flex items-center gap-2">
-                    {renderSolidPointer(value)}
+                    <div className="flex gap-2 h-5 my-2 w-full">
+                      {renderSolidPointer(value)}
                       <span>Solid Pointer {value - 1}</span>
                     </div>
                   </SelectItem>
