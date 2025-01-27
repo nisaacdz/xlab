@@ -169,20 +169,20 @@ where
         let save_fn = Box::new(move |save_path| {
             if let Some(save_path) = save_path {
                 output_path = save_path;
+                move_recording(output_path.clone());
             }
-            move_recording(output_path.clone());
             log_new_recording(
                 output_path,
                 get_options().lock().unwrap().recording_state().duration().as_secs(),
             );
-        });
-
-        save_file_at_loc(save_fn);
-
-        get_save_progress()
+            
+            get_save_progress()
             .lock()
             .unwrap()
             .replace(SaveProgress::Done);
+        });
+
+        save_file_at_loc(save_fn)
     });
     get_save_handle()
         .lock()
