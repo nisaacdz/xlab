@@ -173,13 +173,18 @@ where
             }
             log_new_recording(
                 output_path,
-                get_options().lock().unwrap().recording_state().duration().as_secs(),
+                get_options()
+                    .lock()
+                    .unwrap()
+                    .recording_state()
+                    .duration()
+                    .as_secs(),
             );
-            
+
             get_save_progress()
-            .lock()
-            .unwrap()
-            .replace(SaveProgress::Done);
+                .lock()
+                .unwrap()
+                .replace(SaveProgress::Done);
         });
 
         save_file_at_loc(save_fn)

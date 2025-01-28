@@ -9,9 +9,9 @@ const CircleWithRing = () => {
       viewBox="0 0 360 360"
     >
       {/* Outer ring */}
-      <circle cx="180" cy="180" r="180" fill="rgba(215, 85, 0, 0.35)" />
+      <circle cx="180" cy="180" r="180" fill="rgba(215, 85, 0, 0.29)" />
       {/* Inner core */}
-      <circle cx="180" cy="180" r="60" fill="rgb(215, 85, 0)" />
+      <circle cx="180" cy="180" r="45" fill="rgb(215, 85, 0)" />
     </svg>
   );
 };

@@ -38,14 +38,30 @@ pub fn get_user_options() -> &'static Mutex<UserOptions> {
 }
 
 pub fn get_pointers() -> &'static Vec<Box<dyn Pointer + Send + Sync>> {
+    let size_1 = 35;
+    let size_2 = 27;
+    let size_3 = 36;
+    let size_4 = 21;
     POINTERS.get_or_init(move || {
         vec![
             Box::new(InvisiblePointer),
             Box::new(SystemPointer),
-            Box::new(SolidPointer::new(draw_pointer_1(), (10, 10))),
-            Box::new(SolidPointer::new(draw_pointer_2(), (12, 12))),
-            Box::new(SolidPointer::new(draw_pointer_3(), (15, 15))),
-            Box::new(SolidPointer::new(draw_pointer_4(), (15, 15))),
+            Box::new(SolidPointer::new(
+                draw_pointer_1(size_1),
+                (size_1 / 2, size_1 / 2),
+            )),
+            Box::new(SolidPointer::new(
+                draw_pointer_2(size_2),
+                (size_2 / 2, size_2 / 2),
+            )),
+            Box::new(SolidPointer::new(
+                draw_pointer_3(size_3),
+                (size_3 / 2, size_3 / 2),
+            )),
+            Box::new(SolidPointer::new(
+                draw_pointer_4(size_4),
+                (size_4 / 2, size_4 / 2),
+            )),
         ]
     })
 }
@@ -74,16 +90,16 @@ pub fn update_frame_rate(new_rate: u32) {
 }
 
 /// Generates a 20x20 pointer with two concentric circles.
-fn draw_pointer_1() -> RgbaImage {
-    let size = 361;
-    let mut image = RgbaImage::new(size, size);
-    let inner_radius = 36;
-    let outer_radius = size as i32 / 2;
+fn draw_pointer_1(size: u32) -> RgbaImage {
+    let temp_size = 361;
+    let mut image = RgbaImage::new(temp_size, temp_size);
+    let inner_radius = 30;
+    let outer_radius = temp_size as i32 / 2;
 
     let inner_color = Rgba([215, 85, 0, 255]); // Black, fully opaque
-    let outer_color = Rgba([215, 85, 0, 90]); // Black, translucent
+    let outer_color = Rgba([215, 85, 0, 75]); // Black, translucent
 
-    let center = size as i32 / 2;
+    let center = temp_size as i32 / 2;
 
     for i in -outer_radius..=outer_radius {
         for j in -outer_radius..=outer_radius {
@@ -100,25 +116,25 @@ fn draw_pointer_1() -> RgbaImage {
         }
     }
 
-    super::resize_image(&mut image, (32, 32));
+    super::resize_image(&mut image, (size, size));
 
     image
 }
 
 /// Generates a cross with a thickened center.
-fn draw_pointer_2() -> RgbaImage {
-    let size = 361;
-    let mut image = RgbaImage::new(size, size);
+fn draw_pointer_2(size: u32) -> RgbaImage {
+    let temp_size = 361;
+    let mut image = RgbaImage::new(temp_size, temp_size);
 
-    let padding = size as i32 / 32;
-    let thick = size as i32 / 8;
-    let length = size as i32 / 2; // Scale length
-    let center = size as i32 / 2;
+    let padding = temp_size as i32 / 32;
+    let thick = temp_size as i32 / 8;
+    let length = temp_size as i32 / 2; // Scale length
+    let center = temp_size as i32 / 2;
 
     let color = Rgba([0, 0, 0, 255]); // Core color
     let outer_color = Rgba([255, 255, 255, 120]); // Outer color
 
-    let inner_length = length - 2 * (size as i32 / 25);
+    let inner_length = length - 2 * (temp_size as i32 / 25);
     let inner_thick = thick - (2 * padding);
 
     for i in -length..=length {
@@ -133,18 +149,22 @@ fn draw_pointer_2() -> RgbaImage {
         }
     }
 
-    super::resize_image(&mut image, (21, 21));
+    super::resize_image(&mut image, (size, size));
 
     image
 }
 
 /// Generates concentric rings with a dot in the center.
-fn draw_pointer_3() -> RgbaImage {
-    let size = 361;
+fn draw_pointer_3(size: u32) -> RgbaImage {
+    let temp_size = 361;
     let thickness = 24;
-    let mut image = RgbaImage::new(size, size);
-    let radii = [size as i32 / 6, size as i32 / 3, size as i32 / 2];
-    let center = size as i32 / 2;
+    let mut image = RgbaImage::new(temp_size, temp_size);
+    let radii = [
+        temp_size as i32 / 6,
+        temp_size as i32 / 3,
+        temp_size as i32 / 2,
+    ];
+    let center = temp_size as i32 / 2;
     let color = Rgba([0, 0, 0, 255]);
 
     for &radius in &radii {
@@ -160,24 +180,24 @@ fn draw_pointer_3() -> RgbaImage {
         }
     }
 
-    super::resize_image(&mut image, (36, 36));
+    super::resize_image(&mut image, (size, size));
 
     image
 }
 
-fn draw_pointer_4() -> RgbaImage {
-    let size = 361;
+fn draw_pointer_4(size: u32) -> RgbaImage {
+    let temp_size = 361;
     let thickness = 22;
     let padding = 44;
-    let mut image = RgbaImage::new(size, size);
+    let mut image = RgbaImage::new(temp_size, temp_size);
     let color = Rgba([0, 0, 0, 255]); // Core color
     let padding_color = Rgba([255, 255, 255, 255]); // Padding color
 
     // Draw the padding lines
-    for i in 0..size {
-        for j in 0..size {
+    for i in 0..temp_size {
+        for j in 0..temp_size {
             if (i as i32 - j as i32).abs() < padding
-                || (i as i32 + j as i32 - size as i32).abs() < padding
+                || (i as i32 + j as i32 - temp_size as i32).abs() < padding
             {
                 image.put_pixel(i, j, padding_color);
             }
@@ -185,17 +205,17 @@ fn draw_pointer_4() -> RgbaImage {
     }
 
     // Draw the diagonal lines
-    for i in 11..(size - 11) {
-        for j in 11..(size - 11) {
+    for i in 11..(temp_size - 11) {
+        for j in 11..(temp_size - 11) {
             if (i as i32 - j as i32).abs() < thickness
-                || (i as i32 + j as i32 - size as i32).abs() < thickness
+                || (i as i32 + j as i32 - temp_size as i32).abs() < thickness
             {
                 image.put_pixel(i as u32, j as u32, color);
             }
         }
     }
 
-    super::resize_image(&mut image, (21, 21));
+    super::resize_image(&mut image, (size, size));
 
     image
 }

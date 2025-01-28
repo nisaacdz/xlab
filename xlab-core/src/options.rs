@@ -180,6 +180,11 @@ pub fn draw_image_on_screen(
     let (screen_width, screen_height) = (screen.width(), screen.height());
     let (hotspot_x, hotspot_y) = image_hotspot;
 
+    // Hotspot must appear at the coordinates on the screen
+    // There should be a linear transformation that transforms every pixel coordinate
+    // of the image to new coordinates on the screen such that the image_hotspot gets
+    // translated to the coordinates location.
+
     for x in 0..image_width {
         for y in 0..image_height {
             let (i, j) = (
@@ -191,11 +196,15 @@ pub fn draw_image_on_screen(
                 let screen_pixel = screen.get_pixel_mut(i as u32, j as u32);
                 let cursor_pixel = image.get_pixel(x, y);
                 let depth = cursor_pixel[3] as u32;
-                (0..4).for_each(|i| {
-                    screen_pixel[i] = ((cursor_pixel[i] as u32 * depth
-                        + screen_pixel[i] as u32 * (255 - depth))
+                (0..3).for_each(|c| {
+                    screen_pixel[c] = ((cursor_pixel[c] as u32 * depth
+                        + screen_pixel[c] as u32 * (255 - depth))
                         / 255) as u8;
                 });
+                screen_pixel[3] = (((255 * cursor_pixel[3] as u32)
+                    + (255 * screen_pixel[3] as u32)
+                    - (cursor_pixel[3] as u32 * screen_pixel[3] as u32))
+                    / 255) as u8;
             }
         }
     }
