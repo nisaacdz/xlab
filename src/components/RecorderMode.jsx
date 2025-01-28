@@ -48,7 +48,7 @@ function RecorderMode() {
     clearTimeout(timeoutRef.current);
     if (recordingState === null) {
       getSavingStateAsRecordingState().then((ss) => {
-        if (ss.state === RecordingState.SAVING) {
+        if (ss && ss.state === RecordingState.SAVING) {
           setRecordingState(ss);
         } else {
           getRecordingState().then(setRecordingState);
@@ -218,7 +218,7 @@ function RecorderMode() {
                 title="stop recording"
               >
                 <span className="w-full h-full flex items-center justify-center text-lg text-white">
-                  {formatElapsedTime(Date.now() - recordingState.instant)}
+                  {formatTime(Date.now() - recordingState.instant)}
                 </span>
               </button>
             )}
@@ -275,9 +275,31 @@ const formatDuration = (seconds) => {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 };
 
+const formatTime = (time) => {
+  const ms = String(Math.floor((time % 1000) / 10)).padStart(2, "0");
+  const seconds = String(Math.floor((time / 1000) % 60)).padStart(2, "0");
+  const minutes = String(Math.floor((time / (1000 * 60)) % 60)).padStart(
+    2,
+    "0",
+  );
+  const hours = String(Math.floor(time / (1000 * 60 * 60))).padStart(2, "0");
+
+  return (
+    <div className="font-mono flex items-center space-x-1">
+      <span className="text-2xl">{hours}</span>
+      <span className="text-gray-400">:</span>
+      <span className="text-2xl">{minutes}</span>
+      <span className="text-gray-400">:</span>
+      <span className="text-2xl">{seconds}</span>
+      <span className="text-gray-400">.</span>
+      <span className="text-xl text-gray-800">{ms}</span>
+    </div>
+  );
+};
+
 const formatDate = (secsSinceEpoch) => {
   const date = new Date(secsSinceEpoch * 1000);
-  return date.toLocaleString(); // Adjust format as needed
+  return date.toLocaleString();
 };
 
 const getFilename = (filePath) => filePath.split("/").pop();
@@ -339,6 +361,10 @@ async function getRecordingState() {
 async function getSavingStateAsRecordingState() {
   const state = await invoke("saving_progress");
 
+  if (state === null) {
+    return null;
+  }
+
   if (state === SavingState.INITIALIZING) {
     return {
       state: RecordingState.SAVING,
@@ -371,26 +397,6 @@ async function getSavingStateAsRecordingState() {
   }
 
   throw new Error("Unknown SavingState received from backend");
-}
-
-function formatElapsedTime(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const seconds = totalSeconds % 60;
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const minutes = totalMinutes % 60;
-  const totalHours = Math.floor(totalMinutes / 60);
-  const hours = totalHours % 24;
-  const days = Math.floor(totalHours / 24);
-
-  if (days > 0) {
-    return `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")} days`;
-  } else if (totalHours > 0) {
-    return `${String(totalHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} hours`;
-  } else if (totalMinutes > 0) {
-    return `${String(totalMinutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")} minutes`;
-  } else {
-    return `${String(seconds).padStart(2, "0")}:${String(ms % 1000).padStart(3, "0")} seconds`;
-  }
 }
 
 export default RecorderMode;
