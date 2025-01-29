@@ -51,7 +51,6 @@ function RecorderMode() {
   const pollSavingState = useCallback(async () => {
     try {
       const state = await getSavingStateAsRecordingState();
-      console.log(state);
       setRecordingState(state);
     } catch (error) {
       console.error("Error polling saving state:", error);
@@ -78,8 +77,7 @@ function RecorderMode() {
     let timeout = null;
     if (recordingState === null) {
       getSavingStateAsRecordingState().then((ss) => {
-        console.log("ss in useeffect hoook: ", ss);
-        if (ss) {
+        if (ss && ss.state === RecordingState.SAVING) {
           setRecordingState(ss);
         } else {
           getRecordingState().then(setRecordingState);
