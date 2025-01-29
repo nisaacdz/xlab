@@ -117,6 +117,13 @@ impl RecordOptions {
         )
     }
 
+    pub fn is_done_recording(&self) -> bool {
+        matches!(
+            *self.recording_state.lock().unwrap(),
+            RecordingState::Done(_)
+        )
+    }
+
     pub fn end_recording(&self) -> Option<Duration> {
         let mut recording_state = self.recording_state.lock().unwrap();
         let record_duration = recording_state.duration();

@@ -120,16 +120,20 @@ pub fn save_video<F>(save_file_at_loc: F)
 where
     F: FnOnce(Box<dyn FnOnce(Option<PathBuf>) + Send + 'static>) + Send + 'static,
 {
-    if !get_options().lock().unwrap().is_recording() {
-        return;
-    };
-
     if !matches!(
         get_save_progress().lock().unwrap().as_ref(),
         None | Some(SaveProgress::Done)
     ) {
         return;
     }
+
+    let options_lock = get_options().lock().unwrap();
+    if !options_lock.is_done_recording() {
+        return;
+    };
+
+    *options_lock.recording_state.lock().unwrap() = RecordingState::Idle;
+
     get_save_progress()
         .lock()
         .unwrap()
