@@ -1,5 +1,4 @@
-export const formatDuration = (time_in_millis) => {
-  const totalSeconds = Math.floor(time_in_millis / 1000);
+export const formatDuration = (totalSeconds) => {
   const hours = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
