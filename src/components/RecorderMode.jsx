@@ -16,7 +16,6 @@ const RecordingState = Object.freeze({
   RECORDING: "Recording",
   DONE: "Done",
   SAVING: "Saving",
-  DISCARDING: "Discarding",
 });
 
 const SavingState = Object.freeze({
@@ -48,9 +47,11 @@ function RecorderMode() {
     clearTimeout(timeoutRef.current);
     if (recordingState === null) {
       getSavingStateAsRecordingState().then((ss) => {
+        console.log(ss);
         if (ss && ss.state === RecordingState.SAVING) {
           setRecordingState(ss);
         } else {
+          getRecordingState().then((v) => console.log("setting recording state", v));
           getRecordingState().then(setRecordingState);
         }
       });
@@ -94,10 +95,8 @@ function RecorderMode() {
   };
 
   const handleDiscardVideo = () => {
-    setRecordingState({ state: RecordingState.DISCARDING });
-    invoke("discard_recording").then(() => {
-      setRecordingState(null);
-    });
+    invoke("discard_recording");
+    setRecordingState(null);
   };
 
   const handleReleaseVideo = () => {
@@ -218,7 +217,7 @@ function RecorderMode() {
                 title="stop recording"
               >
                 <span className="w-full h-full flex items-center justify-center text-lg text-white">
-                  {formatTime(Date.now() - recordingState.instant)}
+                  {formatTime(Date.now() - new Date(recordingState.instant))}
                 </span>
               </button>
             )}
@@ -249,13 +248,6 @@ function RecorderMode() {
               </span>
             </div>
           )}
-
-          {recordingState &&
-            recordingState.state === RecordingState.DISCARDING && (
-              <div className="w-full rounded-lg p-2 text-center text-white animate-pulse bg-red-300">
-                Discarding...
-              </div>
-            )}
         </div>
       </div>
       <div className="w-full h-full relative glass p-6 rounded-lg">
@@ -269,11 +261,26 @@ function RecorderMode() {
   );
 }
 
-const formatDuration = (seconds) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+const formatDuration = (time_in_millis) => {
+  const totalSeconds = Math.floor(time_in_millis / 1000); // Convert milliseconds to seconds
+  const hours = Math.floor(totalSeconds / 3600);         // Calculate total hours
+  const mins = Math.floor((totalSeconds % 3600) / 60);   // Calculate remaining minutes
+  const secs = totalSeconds % 60;                       // Calculate remaining seconds
+
+  if (hours > 0) {
+    // Include hours if the duration is more than an hour
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  if (mins > 0) {
+    // If less than an hour but more than a minute, show minutes and seconds
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  // If less than a minute, show only seconds
+  return `00:${String(secs).padStart(2, "0")}`;
 };
+
 
 const formatTime = (time) => {
   const ms = String(Math.floor((time % 1000) / 10)).padStart(2, "0");

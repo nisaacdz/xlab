@@ -8,7 +8,8 @@ use mouse_position::mouse_position;
 use xcap::{image::RgbaImage, Monitor};
 
 use crate::{
-    get_app_cache_dir, log_new_recording, options::RecordingState, user::get_user_options,
+    get_app_cache_dir, get_app_cache_output_dir, log_new_recording, options::RecordingState,
+    user::get_user_options,
 };
 
 use super::options::{Pointer, RecordOptions};
@@ -56,17 +57,20 @@ pub fn get_save_progress() -> &'static Mutex<Option<SaveProgress>> {
 }
 
 pub fn record() {
+    if get_options().lock().unwrap().is_recording() {
+        return;
+    };
+    // Starting the recording here is important for the frontend to immediately start
+    // state updates after this function is called
+    get_options().lock().unwrap().start_recording();
     let handle = std::thread::spawn(move || {
-        assert!(!get_options().lock().unwrap().is_recording());
         let user_options_lock = get_user_options().lock().unwrap();
         let pointer = user_options_lock.pointer;
         let frame_rate = user_options_lock.frame_rate;
         let resolution = user_options_lock.resolution;
         let session_name = generate_random_string(12);
-        let cache_dir = get_app_cache_dir()
-            .unwrap()
-            .join(format!("cache_{session_name}"));
-        let output_dir = get_app_cache_dir().unwrap().join("recordings");
+        let cache_dir = generate_session_cache_dir(&session_name);
+        let output_dir = get_app_cache_output_dir();
         let new_record_options = RecordOptions::new(
             pointer,
             frame_rate,
@@ -79,12 +83,15 @@ pub fn record() {
         let record_options_mtx = get_options();
         *record_options_mtx.lock().unwrap() = new_record_options;
         if cache_dir.exists() {
-            std::fs::remove_dir_all(&cache_dir).unwrap();
+            std::fs::remove_dir_all(&cache_dir).ok();
         }
-        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::create_dir_all(&cache_dir).ok();
         const ONE_NANO: u64 = 1_000_000_000;
         let wait_duration = Duration::from_nanos(ONE_NANO / frame_rate as u64);
 
+        // Calling start recording again will update the start time to the current time
+        // Improves accuracy of the recording duration by nanoseconds (not really needed)
+        // But it's good in case the above code takes a long time to execute
         get_options().lock().unwrap().start_recording();
 
         while record_options_mtx.lock().unwrap().is_recording() {
@@ -113,11 +120,16 @@ pub fn save_video<F>(save_file_at_loc: F)
 where
     F: FnOnce(Box<dyn FnOnce(Option<PathBuf>) + Send + 'static>) + Send + 'static,
 {
-    assert!(!get_options().lock().unwrap().is_recording());
-    assert!(matches!(
+    if !get_options().lock().unwrap().is_recording() {
+        return;
+    };
+
+    if !matches!(
         get_save_progress().lock().unwrap().as_ref(),
         None | Some(SaveProgress::Done)
-    ));
+    ) {
+        return;
+    }
     get_save_progress()
         .lock()
         .unwrap()
@@ -169,7 +181,7 @@ where
         let save_fn = Box::new(move |save_path| {
             if let Some(save_path) = save_path {
                 output_path = save_path;
-                move_recording(output_path.clone());
+                move_recording(&output_path);
             }
             log_new_recording(
                 output_path,
@@ -197,29 +209,17 @@ where
 }
 
 pub fn discard_video() {
-    let mut options = get_options().lock().unwrap();
+    let options = get_options().lock().unwrap();
     if !matches!(options.recording_state(), RecordingState::Done(_)) {
         return;
     }
-    if options.cache_dir().exists() {
-        std::fs::remove_dir_all(options.cache_dir()).unwrap();
-    }
-    let user_options = super::user::get_user_options().lock().unwrap();
-    let frame_rate = user_options.frame_rate;
-    let resolution = user_options.resolution;
-    let pointer = user_options.pointer;
-    // these are placeholders and are guaranteed to be replaced by the record function
-    let cache_dir = PathBuf::new();
-    let output_dir = get_app_cache_dir().unwrap().join("recordings");
-    let new_options = RecordOptions::new(
-        pointer,
-        frame_rate,
-        resolution,
-        String::new(),
-        output_dir,
-        cache_dir,
-    );
-    *options = new_options;
+    *options.recording_state.lock().unwrap() = RecordingState::Idle;
+    let cache_dir = options.cache_dir().clone();
+    std::thread::spawn(move || {
+        if cache_dir.exists() {
+            std::fs::remove_dir_all(cache_dir).ok();
+        }
+    });
 }
 
 pub fn stop() {
@@ -238,7 +238,7 @@ fn process(
     pointer_position: (u32, u32),
 ) {
     pointer.resolve(&mut screen, pointer_position);
-    screen.save(image_path).unwrap();
+    screen.save(image_path).ok();
 }
 
 fn get_mouse_position() -> (u32, u32) {
@@ -267,17 +267,23 @@ fn generate_cached_image_path(
     cache_dir.join(format!("{session_name}_{:07}.png", cache_count))
 }
 
+fn generate_session_cache_dir(session_name: &str) -> PathBuf {
+    get_app_cache_dir()
+        .unwrap()
+        .join(format!("cache_{session_name}"))
+}
+
 fn generate_output_path(output_dir: &PathBuf, session_name: &str) -> PathBuf {
     output_dir.join(format!("__{session_name}__.mp4"))
 }
 
-pub fn move_recording(new_path: PathBuf) {
+pub fn move_recording(new_path: &PathBuf) {
     let session_name = get_options().lock().unwrap().session_name.clone();
     let output_path = get_options()
         .lock()
         .map(|ro| generate_output_path(ro.output_dir(), &session_name))
         .unwrap();
-    if output_path == new_path {
+    if &output_path == new_path {
         return;
     };
     if !new_path.exists() {
@@ -290,7 +296,7 @@ pub fn move_recording(new_path: PathBuf) {
         .open(&new_path)
         .unwrap();
     if let Err(_) = std::fs::rename(&output_path, &new_path) {
-        std::fs::copy(output_path, new_path).unwrap();
+        std::fs::copy(output_path, new_path).ok();
     }
 }
 

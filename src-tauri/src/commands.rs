@@ -30,12 +30,7 @@ pub fn save_recording() {
             .file()
             .set_file_name(&temp_filename)
             .add_filter("MP4 Files", &["mp4"])
-            .save_file(move |filepath| match filepath {
-                Some(path) => {
-                    save_fn(path.into_path().ok());
-                }
-                None => save_fn(None),
-            });
+            .save_file(move |filepath| save_fn(filepath.map(|v| v.into_path().ok()).flatten()));
     };
 
     xlab_core::record::save_video(save_at_chosen_loc);

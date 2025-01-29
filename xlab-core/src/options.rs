@@ -10,6 +10,7 @@ pub enum RecordingState {
     Idle,
     #[serde(serialize_with = "serialize_instant")]
     Recording(Instant),
+    #[serde(serialize_with = "serialize_duration")]
     Done(Duration),
 }
 
@@ -23,9 +24,44 @@ where
     sz.serialize_u128(
         r_time
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis(),
     )
+}
+
+fn serialize_duration<S>(duration: &Duration, sz: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    sz.serialize_u64(duration.as_millis() as u64)
+}
+
+#[test]
+fn test_recording_state_serialization() {
+    let instant = Instant::now();
+    let time = SystemTime::now();
+
+    let recording_state = RecordingState::Recording(instant);
+    std::thread::sleep(Duration::from_secs(3));
+
+    use serde_json::to_string;
+
+    let recording_state_str = to_string(&recording_state).unwrap();
+
+    // Simulate a JavaScript Object
+    #[allow(non_snake_case)]
+    #[derive(serde::Deserialize)]
+    struct RecordingState2 {
+        Recording: u128,
+    }
+
+    let recording_state2: RecordingState2 = serde_json::from_str(&recording_state_str).unwrap();
+    let time_discrepancy = recording_state2.Recording
+        - time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+    println!("Time discrepancy: {time_discrepancy}");
 }
 
 impl RecordingState {
@@ -43,7 +79,7 @@ pub struct RecordOptions {
     pub(crate) frame_rate: u32,
     pub(crate) resolution: (u32, u32),
     pub cache_count: Mutex<u64>,
-    recording_state: Mutex<RecordingState>,
+    pub(crate) recording_state: Mutex<RecordingState>,
     pub session_name: String,
     pub output_dir: PathBuf,
     pub cache_dir: PathBuf,
@@ -83,15 +119,9 @@ impl RecordOptions {
 
     pub fn end_recording(&self) -> Option<Duration> {
         let mut recording_state = self.recording_state.lock().unwrap();
-        match *recording_state {
-            RecordingState::Idle => None,
-            RecordingState::Recording(instant) => {
-                let duration = instant.elapsed();
-                *recording_state = RecordingState::Done(duration);
-                Some(instant.elapsed())
-            }
-            RecordingState::Done(duration) => Some(duration),
-        }
+        let record_duration = recording_state.duration();
+        *recording_state = RecordingState::Done(record_duration);
+        Some(record_duration)
     }
 
     pub fn get_rate(&self) -> u32 {

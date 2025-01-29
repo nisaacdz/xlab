@@ -51,6 +51,10 @@ pub fn get_app_cache_dir() -> Option<&'static PathBuf> {
     APP_CACHE_DIR.get()
 }
 
+pub fn get_app_cache_output_dir() -> PathBuf {
+    get_app_cache_dir().unwrap().join("recordings")
+}
+
 pub fn screen_resolution() -> (u32, u32) {
     let monitor = record::get_monitor();
     (monitor.width(), monitor.height())
