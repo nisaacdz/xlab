@@ -313,6 +313,7 @@ fn yuv_conversion(image: &RgbaImage) -> YuvPlanarImageMut<u8> {
         image.width() * 4, // RGBA stride (4 bytes per pixel)
         YuvRange::Limited, // Commonly used range
         YuvStandardMatrix::Bt709,
+        yuvutils_rs::YuvConversionMode::Balanced,
     )
     .expect("RGBA to YUV420 conversion failed");
 

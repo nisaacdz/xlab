@@ -6,12 +6,12 @@ edition = "2021"
 [dependencies]
 xcap = "0.2.0"
 mouse_position = "0.1.4"
-rand = "0.8.5"
+rand = "0.9.0"
 ffmpeg-sys-next = { version = "7.1.0", features = ["build-lib-x264", "build-license-gpl"] }
-yuvutils-rs = "0.5.14"
+yuvutils-rs = "0.6.0"
 serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.135"
+serde_json = "1.0.138"
 fast_image_resize = { version = "5.1.0", features = ["rayon"] }
 
-[profile.dev.package."*"]
+[profile.dev]
 opt-level = 3

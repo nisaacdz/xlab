@@ -132,6 +132,8 @@ where
         return;
     };
 
+    let recording_duration = options_lock.recording_state().duration();
+
     *options_lock.recording_state.lock().unwrap() = RecordingState::Idle;
 
     get_save_progress()
@@ -187,15 +189,7 @@ where
                 output_path = save_path;
                 move_recording(&output_path);
             }
-            log_new_recording(
-                output_path,
-                get_options()
-                    .lock()
-                    .unwrap()
-                    .recording_state()
-                    .duration()
-                    .as_secs(),
-            );
+            log_new_recording(output_path, recording_duration.as_secs());
 
             get_save_progress()
                 .lock()
@@ -229,7 +223,7 @@ pub fn discard_video() {
 pub fn stop() {
     let mut ro = get_options().lock().unwrap();
     let video_duration = ro.end_recording().unwrap();
-    if video_duration.as_secs() > 5 {
+    if video_duration.as_secs() > 2 {
         let corrected_frame_rate = ro.cache_count() / video_duration.as_secs();
         ro.frame_rate = corrected_frame_rate as u32;
     }
@@ -253,13 +247,10 @@ fn get_mouse_position() -> (u32, u32) {
 }
 
 pub fn generate_random_string(length: usize) -> String {
-    use rand::distributions::Alphanumeric;
-    use rand::{thread_rng, Rng};
+    use rand::distr::Alphanumeric;
+    use rand::{rng, Rng};
 
-    let bytes = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .collect();
+    let bytes = rng().sample_iter(&Alphanumeric).take(length).collect();
     String::from_utf8(bytes).unwrap()
 }
 

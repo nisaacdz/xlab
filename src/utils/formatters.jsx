@@ -3,6 +3,8 @@ export const formatDuration = (totalSeconds) => {
   const mins = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
 
+  console.log("totalSeconds", totalSeconds);
+
   if (hours > 0) {
     return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
