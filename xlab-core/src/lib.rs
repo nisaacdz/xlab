@@ -172,10 +172,10 @@ mod tests {
         set_app_cache_dir(app_cache_dir);
         update_pointer(2);
         update_frame_rate(24);
-        let width = 1366 * 480 / 768;
-        update_resolution(width, 480);
+        let width = 1366 * 720 / 768;
+        update_resolution(width, 720);
         record();
-        std::thread::sleep(Duration::from_secs(25));
+        std::thread::sleep(Duration::from_secs(12));
         stop();
         save_video(|save_fn| save_fn(None));
         super::record::get_save_handle()

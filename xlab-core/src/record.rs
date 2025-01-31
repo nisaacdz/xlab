@@ -140,6 +140,9 @@ where
         .lock()
         .unwrap()
         .replace(SaveProgress::Initializing);
+
+    let monitor = get_monitor();
+    let image_dimensions = (monitor.width(), monitor.height());
     let handle = std::thread::spawn(move || {
         get_record_handle().lock().unwrap().take().map(|u| u.join());
         let record_options_mtx = get_options();
@@ -155,10 +158,11 @@ where
             std::fs::create_dir_all(&output_dir).unwrap();
         }
         let mut output_path = generate_output_path(&output_dir, &session_name);
-        let mut video_encoder = super::video::VideoEncoder::initialize(
+        let mut video_encoder = super::video::VideoEncoder::new(
             output_path.clone(),
             frame_rate,
             resolution,
+            image_dimensions,
             Default::default(),
         )
         .unwrap();
@@ -170,7 +174,8 @@ where
             // png image is at image_path
             // append the image to the video
             let image_path = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            video_encoder.append_image(&image_path).unwrap();
+            let image = xcap::image::open(image_path).unwrap().to_rgba8();
+            video_encoder.append_image(image, cache_count).unwrap();
         }
 
         get_save_progress()
