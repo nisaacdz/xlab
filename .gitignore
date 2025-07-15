@@ -31,3 +31,6 @@ target
 *.sln
 *.sw?
 
+# other files
+ffmpeg/bin
+ffmpeg/doc
