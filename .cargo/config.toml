@@ -1,5 +1,8 @@
 [env]
-# Set the FFMPEG_DIR environment variable for all cargo commands.
-# The `relative = true` key makes the path relative to the config file's parent directory.
-FFMPEG_DIR = { value = "ffmpeg", relative = true }
-LIBCLANG_PATH = { value = "D:\\Program Files\\LLVM\\bin", relative = false }
+# This is the most important variable.
+# It forces vcpkg to find libraries that are compatible with static linking.
+VCPKG_CRT_LINKAGE = "static"
+
+# While the above is key, we will also set the default triplet
+# as a "belt and suspenders" measure to be absolutely clear.
+VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
