@@ -5,7 +5,7 @@ use std::{
 };
 
 use mouse_position::mouse_position;
-use xcap::{image::RgbaImage, Monitor};
+use xcap::image::RgbaImage;
 
 use crate::{
     get_app_cache_dir, get_app_cache_output_dir, log_new_recording, options::RecordingState,
@@ -14,15 +14,10 @@ use crate::{
 
 use super::options::{Pointer, RecordOptions};
 
-static MONITOR: OnceLock<Monitor> = OnceLock::new();
 static OPTIONS: OnceLock<Mutex<RecordOptions>> = OnceLock::new();
 static RECORD_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_HANDLE: OnceLock<Mutex<Option<std::thread::JoinHandle<()>>>> = OnceLock::new();
 static SAVE_PROGRESS: OnceLock<Mutex<Option<SaveProgress>>> = OnceLock::new();
-
-pub fn get_monitor() -> &'static Monitor {
-    MONITOR.get_or_init(move || xcap::Monitor::all().unwrap().into_iter().next().unwrap())
-}
 
 pub fn get_options() -> &'static Mutex<RecordOptions> {
     OPTIONS.get_or_init(move || {
@@ -92,13 +87,14 @@ pub fn record() {
         // Calling start recording again will update the start time to the current time
         // Improves accuracy of the recording duration by nanoseconds (not really needed)
         // But it's good in case the above code takes a long time to execute
+        let monitor = xcap::Monitor::all().unwrap().into_iter().next().unwrap();
         get_options().lock().unwrap().start_recording();
 
         while record_options_mtx.lock().unwrap().is_recording() {
             let start = std::time::Instant::now();
             let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
             let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            let screen = get_monitor().capture_image().unwrap();
+            let screen = monitor.capture_image().unwrap();
             let pointer_position = get_mouse_position();
 
             process(image_dir, pointer, screen, pointer_position);
@@ -141,8 +137,10 @@ where
         .unwrap()
         .replace(SaveProgress::Initializing);
 
-    let monitor = get_monitor();
-    let image_dimensions = (monitor.width(), monitor.height());
+    let image_dimensions = {
+        let monitor = xcap::Monitor::all().unwrap().into_iter().next().unwrap();
+        (monitor.width().unwrap(), monitor.height().unwrap())
+    };
     let handle = std::thread::spawn(move || {
         get_record_handle().lock().unwrap().take().map(|u| u.join());
         let record_options_mtx = get_options();

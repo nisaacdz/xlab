@@ -1,0 +1,5 @@
+[env]
+# Set the FFMPEG_DIR environment variable for all cargo commands.
+# The `relative = true` key makes the path relative to the config file's parent directory.
+FFMPEG_DIR = { value = "ffmpeg", relative = true }
+LIBCLANG_PATH = { value = "D:\\Program Files\\LLVM\\bin", relative = false }

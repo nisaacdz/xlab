@@ -1,6 +1,5 @@
 use std::{path::PathBuf, sync::OnceLock, time::SystemTime};
 
-use record::get_monitor;
 use serde::Deserialize;
 use user::get_pointers;
 
@@ -14,7 +13,6 @@ use xcap::image::RgbaImage;
 /// When called after app has started, it does nothing
 pub fn init() {
     let _ = get_pointers();
-    let _ = get_monitor();
 }
 
 pub(crate) fn resize_image(img: &mut RgbaImage, (new_width, new_height): (u32, u32)) {
@@ -56,8 +54,8 @@ pub fn get_app_cache_output_dir() -> PathBuf {
 }
 
 pub fn screen_resolution() -> (u32, u32) {
-    let monitor = record::get_monitor();
-    (monitor.width(), monitor.height())
+    let monitor = xcap::Monitor::all().unwrap().into_iter().next().unwrap();
+    (monitor.width().unwrap(), monitor.height().unwrap())
 }
 
 pub fn valid_resolutions() -> [[u32; 2]; 8] {

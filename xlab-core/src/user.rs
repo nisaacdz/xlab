@@ -42,28 +42,49 @@ pub fn get_pointers() -> &'static Vec<Box<dyn Pointer + Send + Sync>> {
     let size_2 = 27;
     let size_3 = 36;
     let size_4 = 21;
-    POINTERS.get_or_init(move || {
-        vec![
-            Box::new(InvisiblePointer),
-            Box::new(SystemPointer),
+    let pointers = std::thread::scope(|s| {
+        let mut pointers: Vec<Box<dyn Pointer + Send + Sync>> =
+            vec![Box::new(InvisiblePointer), Box::new(SystemPointer)];
+        let pointer_1 = s.spawn(|| {
             Box::new(SolidPointer::new(
                 draw_pointer_1(size_1),
                 (size_1 / 2, size_1 / 2),
-            )),
+            ))
+        });
+
+        let pointer_2 = s.spawn(|| {
             Box::new(SolidPointer::new(
                 draw_pointer_2(size_2),
                 (size_2 / 2, size_2 / 2),
-            )),
+            ))
+        });
+
+        let pointer_3 = s.spawn(|| {
             Box::new(SolidPointer::new(
                 draw_pointer_3(size_3),
                 (size_3 / 2, size_3 / 2),
-            )),
+            ))
+        });
+
+        let pointer_4 = s.spawn(|| {
             Box::new(SolidPointer::new(
                 draw_pointer_4(size_4),
                 (size_4 / 2, size_4 / 2),
-            )),
-        ]
-    })
+            ))
+        });
+
+        let custom_pointers: Vec<Box<dyn Pointer + Send + Sync>> = vec![
+            pointer_1.join().unwrap() as Box<dyn Pointer + Send + Sync>,
+            pointer_2.join().unwrap() as Box<dyn Pointer + Send + Sync>,
+            pointer_3.join().unwrap() as Box<dyn Pointer + Send + Sync>,
+            pointer_4.join().unwrap() as Box<dyn Pointer + Send + Sync>,
+        ];
+
+        pointers.extend(custom_pointers);
+
+        pointers
+    });
+    POINTERS.get_or_init(move || pointers)
 }
 
 pub fn update_resolution(mut width: u32, height: u32) {
