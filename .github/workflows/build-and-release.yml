@@ -87,8 +87,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies (CMake, Pkg-Config, Ninja)
-        run: choco install cmake pkg-config ninja --ignore-checksums
+      - name: Install build dependencies (CMake, Ninja)
+        run: choco install cmake ninja --ignore-checksums
 
       - name: Refresh Environment
         run: refreshenv
