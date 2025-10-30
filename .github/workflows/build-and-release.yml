@@ -115,6 +115,12 @@ jobs:
           C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm make yasm nasm perl diffutils"
         shell: pwsh
 
+      - name: Add MSYS2 to PATH for FFmpeg build
+        run: |
+          echo "C:\tools\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "C:\tools\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
       - name: Install npm dependencies
         run: npm ci
 
