@@ -2,6 +2,10 @@ name: Build and Release
 
 on:
   push:
+    # Build on release branches to test
+    branches:
+      - 'release/**'
+    # Build AND Release on version tags
     tags:
       - 'v*'
   workflow_dispatch:
@@ -120,6 +124,8 @@ jobs:
     name: Create Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
+    # Crucial: Only run this job if triggered by a tag.
+    # Pushes to 'release/**' branches will skip this step.
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
