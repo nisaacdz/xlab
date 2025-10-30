@@ -136,7 +136,10 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/**/*
+            artifacts/linux/*.deb
+            artifacts/linux/*.rpm
+            artifacts/windows/*.msi
+            artifacts/windows/*.exe
           draft: false
           prerelease: false
         env:
