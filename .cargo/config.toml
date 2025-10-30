@@ -1,10 +1,6 @@
 [env]
-# This is the most important variable.
-# It forces vcpkg to find libraries that are compatible with static linking.
-# Using static-md for dynamic CRT linkage (required for Rust MSVC)
+# Configure vcpkg for dynamic CRT linkage (required for Rust MSVC)
 VCPKG_CRT_LINKAGE = "dynamic"
 
-# While the above is key, we will also set the default triplet
-# as a "belt and suspenders" measure to be absolutely clear.
-# x64-windows-static-md means: static FFmpeg libs, dynamic CRT
-VCPKG_DEFAULT_TRIPLET = "x64-windows-static-md"
+# Use x64-windows triplet for dynamic FFmpeg libraries
+VCPKG_DEFAULT_TRIPLET = "x64-windows"
