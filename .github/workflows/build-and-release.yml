@@ -44,11 +44,13 @@ jobs:
             libpipewire-0.3-dev \
             clang \
             libgbm-dev \
-            yasm \
-            nasm \
-            git \
-            make \
-            perl
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libavfilter-dev \
+            libavdevice-dev \
+            libswscale-dev \
+            libswresample-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
