@@ -113,6 +113,15 @@ jobs:
         with:
           version: '18'
 
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            mingw-w64-x86_64-ffmpeg
+            mingw-w64-x86_64-pkg-config
+          update: true
+
       - name: Install npm dependencies
         run: npm ci
 
