@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - 'release/**'
-    # Build AND Release on version tags
     tags:
       - 'v*'
   pull_request:
@@ -43,14 +42,25 @@ jobs:
             file \
             libpipewire-0.3-dev \
             clang \
-            libgbm-dev \
-            libavcodec-dev \
-            libavformat-dev \
-            libavutil-dev \
-            libavfilter-dev \
-            libavdevice-dev \
-            libswscale-dev \
-            libswresample-dev
+            libgbm-dev
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+          /tmp/vcpkg/bootstrap-vcpkg.sh
+          
+      - name: Install prebuilt static FFmpeg via vcpkg
+        run: |
+          # CORRECTED: Install FFmpeg without specifying core components as features
+          /tmp/vcpkg/vcpkg install ffmpeg:x64-linux
+          
+          # Set up environment variables for pkg-config
+          echo "PKG_CONFIG_PATH=/tmp/vcpkg/installed/x64-linux/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+          
+          # Verify installation
+          PKG_CONFIG_PATH=/tmp/vcpkg/installed/x64-linux/lib/pkgconfig pkg-config --modversion libavcodec
+          ls -la /tmp/vcpkg/installed/x64-linux/lib/libav*.a | head -5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -103,16 +113,17 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install FFmpeg (Windows)
+      - name: Install prebuilt static FFmpeg via vcpkg (Windows)
         run: |
-          # Install FFmpeg with static libraries via vcpkg
-          vcpkg install ffmpeg:x64-windows-static-md
-        shell: pwsh
-
-      - name: Set vcpkg environment
-        run: |
-          echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "VCPKGRS_DYNAMIC=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # CORRECTED: Install FFmpeg without specifying core components as features
+          vcpkg install ffmpeg:x64-windows-static
+          
+          # Set up environment variables
+          echo "PKG_CONFIG_PATH=C:\vcpkg\installed\x64-windows-static\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Verify
+          Get-ChildItem "C:\vcpkg\installed\x64-windows-static\lib" -Filter "*.lib" | Select-Object -First 5
         shell: pwsh
 
       - name: Install npm dependencies
@@ -133,8 +144,6 @@ jobs:
     name: Create Release
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    # Crucial: Only run this job if triggered by a tag.
-    # Pushes to 'release/**' branches will skip this step.
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
