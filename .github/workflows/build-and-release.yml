@@ -87,8 +87,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies (FFmpeg, pkg-config, CMake)
-        run: choco install ffmpeg pkg-config cmake
+      - name: Install build dependencies (CMake, Pkg-Config, Ninja)
+        run: choco install cmake pkg-config ninja --ignore-checksums
+
+      - name: Refresh Environment
+        run: refreshenv
+        shell: powershell
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
