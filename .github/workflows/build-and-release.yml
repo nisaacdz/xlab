@@ -109,8 +109,7 @@ jobs:
       - name: Install FFmpeg via vcpkg
         run: |
           # Install FFmpeg with required features using vcpkg
-          vcpkg install `
-            ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale]:x64-windows-static-md
+          vcpkg install ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale]:x64-windows-static-md
         shell: pwsh
 
       - name: Configure FFmpeg environment
@@ -119,14 +118,12 @@ jobs:
           # Set up environment variables for ffmpeg-sys-next
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkgRoot) {
-            Write-Error "VCPKG_INSTALLATION_ROOT environment variable is not set"
-            exit 1
+            throw "VCPKG_INSTALLATION_ROOT environment variable is not set"
           }
           
           $ffmpegDir = "$vcpkgRoot\installed\x64-windows-static-md"
           if (-not (Test-Path $ffmpegDir)) {
-            Write-Error "FFmpeg installation directory not found: $ffmpegDir"
-            exit 1
+            throw "FFmpeg installation directory not found: $ffmpegDir"
           }
           
           Write-Host "Using vcpkg root: $vcpkgRoot"
