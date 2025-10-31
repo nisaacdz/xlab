@@ -2,9 +2,11 @@ name: Build and Release
 
 on:
   push:
+    # Build on all main development branches and release branches to test CI
     branches:
       - main
       - 'release/**'
+    # Build AND Release on version tags (CD)
     tags:
       - 'v*'
   pull_request:
@@ -26,41 +28,33 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libxdo-dev \
-            libxcb1-dev \
-            libxrandr-dev \
-            libdbus-1-dev \
-            pkg-config \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libpipewire-0.3-dev \
-            clang \
-            libgbm-dev
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf libxdo-dev libxcb1-dev libxrandr-dev \
+            libdbus-1-dev pkg-config build-essential curl wget file \
+            libpipewire-0.3-dev clang libgbm-dev nasm # nasm is required by ffmpeg
 
-      - name: Install vcpkg
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: /tmp/vcpkg
+          # NOTE: Removed github.sha from key to allow cache hits across commits
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+            ${{ runner.os }}-vcpkg-
+
+      - name: Install and Build FFmpeg via vcpkg
         run: |
-          git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
-          /tmp/vcpkg/bootstrap-vcpkg.sh
-          
-      - name: Install prebuilt static FFmpeg via vcpkg
-        run: |
-          # CORRECTED: Install FFmpeg without specifying core components as features
+          # If cache wasn't restored, clone vcpkg
+          if [ ! -d "/tmp/vcpkg" ] || [ ! -f "/tmp/vcpkg/vcpkg" ]; then
+            git clone https://github.com/Microsoft/vcpkg.git /tmp/vcpkg
+            /tmp/vcpkg/bootstrap-vcpkg.sh
+          fi
+          # Install ffmpeg (this will be very fast if cache is hit)
           /tmp/vcpkg/vcpkg install ffmpeg:x64-linux
-          
-          # Set up environment variables for pkg-config
+          # Set up environment variables for the build
           echo "PKG_CONFIG_PATH=/tmp/vcpkg/installed/x64-linux/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
           echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
-          
-          # Verify installation
-          PKG_CONFIG_PATH=/tmp/vcpkg/installed/x64-linux/lib/pkgconfig pkg-config --modversion libavcodec
-          ls -la /tmp/vcpkg/installed/x64-linux/lib/libav*.a | head -5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -95,9 +89,48 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # --- START OF WINDOWS TOOLCHAIN FIXES ---
+      - name: Install build tool dependencies (pkg-config and CMake)
+        run: choco install pkgconfiglite cmake --ignore-checksums
+        shell: pwsh
+        
+      - name: Install LLVM and Clang (needed for static linking)
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: '18'
+      # --- END OF WINDOWS TOOLCHAIN FIXES ---
+        
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg
+          # NOTE: Removed github.sha from key to allow cache hits across commits
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+            ${{ runner.os }}-vcpkg-
+
+      - name: Install and Build FFmpeg via vcpkg
+        run: |
+          # If cache wasn't restored, clone vcpkg
+          if (-not (Test-Path "C:\vcpkg" -PathType Container) -or -not (Test-Path "C:\vcpkg\vcpkg.exe")) {
+            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+            Push-Location C:\vcpkg
+            .\bootstrap-vcpkg.bat
+            Pop-Location
+          }
+          # Install ffmpeg (this will be fast if cache is hit)
+          vcpkg install ffmpeg
+          # Set up environment variables for the build
+          echo "PKG_CONFIG_PATH=C:\vcpkg\installed\x64-windows-static\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -112,19 +145,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-
-      - name: Install prebuilt static FFmpeg via vcpkg (Windows)
-        run: |
-          # CORRECTED: Install FFmpeg without specifying core components as features
-          vcpkg install ffmpeg:x64-windows-static
-          
-          # Set up environment variables
-          echo "PKG_CONFIG_PATH=C:\vcpkg\installed\x64-windows-static\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          
-          # Verify
-          Get-ChildItem "C:\vcpkg\installed\x64-windows-static\lib" -Filter "*.lib" | Select-Object -First 5
-        shell: pwsh
 
       - name: Install npm dependencies
         run: npm ci
@@ -148,27 +168,21 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Linux artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: linux-binaries
-          path: ./artifacts/linux
-
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-binaries
-          path: ./artifacts/windows
-
+          path: artifacts/
+          
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/linux/*.deb
-            artifacts/linux/*.rpm
-            artifacts/windows/*.msi
-            artifacts/windows/*.exe
+            artifacts/linux-binaries/*.deb
+            artifacts/linux-binaries/*.rpm
+            artifacts/windows-binaries/*.msi
+            artifacts/windows-binaries/*.exe
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
