@@ -1,6 +1,6 @@
-/* PhD-Level Unique Design System */
+/* Modern, Responsive Design System */
 :root {
-  /* Unique Color Palette - Deep Ocean Gradient Theme */
+  /* Refined Color Palette */
   --primary-deep: #0A192F;
   --primary-ocean: #112240;
   --primary-teal: #64FFDA;
@@ -11,9 +11,9 @@
   --text-primary: #E6F1FF;
   --text-secondary: #8892B0;
   --text-muted: #495670;
-  --glass-light: rgba(100, 255, 218, 0.08);
-  --glass-border: rgba(100, 255, 218, 0.15);
-  --shadow-glow: rgba(100, 255, 218, 0.2);
+  --glass-light: rgba(100, 255, 218, 0.05);
+  --glass-border: rgba(100, 255, 218, 0.12);
+  --shadow-glow: rgba(100, 255, 218, 0.15);
 }
 
 * {
@@ -40,8 +40,8 @@ body {
   left: 0;
   overflow: hidden;
   background: 
-    radial-gradient(circle at 20% 50%, rgba(100, 255, 218, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(167, 139, 250, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 20% 50%, rgba(100, 255, 218, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(167, 139, 250, 0.03) 0%, transparent 50%),
     linear-gradient(135deg, var(--primary-deep) 0%, var(--primary-ocean) 100%);
 }
 
@@ -50,38 +50,36 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2rem;
-  gap: 2rem;
+  padding: 1.5rem;
+  gap: 1.5rem;
 }
 
 .mode-container {
   flex: 1;
   overflow: hidden;
-  animation: fadeIn 0.5s ease-in-out;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Glass Morphism Base Styles with Unique Teal Glow */
+/* Refined Glass Morphism */
 .glass {
   background: var(--glass-light);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 20px;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-radius: 16px;
   border: 1px solid var(--glass-border);
   box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.37),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 20px 0 var(--shadow-glow);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    0 4px 16px 0 rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass:hover {
-  background: rgba(100, 255, 218, 0.12);
-  border-color: rgba(100, 255, 218, 0.3);
+  background: rgba(100, 255, 218, 0.08);
+  border-color: rgba(100, 255, 218, 0.2);
   box-shadow: 
-    0 12px 40px 0 rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 30px 0 rgba(100, 255, 218, 0.3);
-  transform: translateY(-2px);
+    0 6px 20px 0 rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 16px 0 var(--shadow-glow);
 }
 
 /* Card Styles */
@@ -94,16 +92,16 @@ body {
   font-weight: 600;
   color: var(--primary-teal);
   margin-bottom: 1.5rem;
-  text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+  text-shadow: 0 0 16px rgba(100, 255, 218, 0.2);
 }
 
-/* Button Styles with Unique Gradients */
+/* Button Styles - More Subtle */
 button {
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
@@ -117,12 +115,12 @@ button:disabled {
   color: var(--primary-deep);
   padding: 0.75rem 2rem;
   font-size: 1rem;
-  box-shadow: 0 4px 15px rgba(100, 255, 218, 0.3);
+  box-shadow: 0 2px 8px rgba(100, 255, 218, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 6px 25px rgba(100, 255, 218, 0.5);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-danger {
@@ -130,12 +128,12 @@ button:disabled {
   color: white;
   padding: 0.75rem 2rem;
   font-size: 1rem;
-  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.2);
 }
 
 .btn-danger:hover:not(:disabled) {
-  box-shadow: 0 6px 25px rgba(255, 107, 157, 0.5);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-success {
@@ -143,12 +141,12 @@ button:disabled {
   color: white;
   padding: 0.75rem 2rem;
   font-size: 1rem;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .btn-success:hover:not(:disabled) {
-  box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
 }
 
 /* Select and Input Styles */
@@ -159,13 +157,13 @@ select, input {
   padding: 0.75rem 1rem;
   color: var(--text-primary);
   font-size: 0.95rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   outline: none;
 }
 
 select:focus, input:focus {
   border-color: var(--primary-teal);
-  box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.1);
+  box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.1);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -178,7 +176,7 @@ select option {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -197,10 +195,10 @@ select option {
 
 @keyframes glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+    box-shadow: 0 0 16px rgba(100, 255, 218, 0.2);
   }
   50% {
-    box-shadow: 0 0 40px rgba(100, 255, 218, 0.6);
+    box-shadow: 0 0 24px rgba(100, 255, 218, 0.4);
   }
 }
 
@@ -233,6 +231,17 @@ select option {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+  .app-content {
+    padding: 1.25rem;
+    gap: 1.25rem;
+  }
+  
+  .card-header {
+    font-size: 1.375rem;
+  }
+}
+
 @media (max-width: 768px) {
   .app-content {
     padding: 1rem;
@@ -241,6 +250,10 @@ select option {
   
   .card-header {
     font-size: 1.25rem;
+  }
+  
+  button {
+    font-size: 0.9rem;
   }
 }
 .app-container {
