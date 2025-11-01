@@ -4,22 +4,34 @@ let mockPastVideos = [
   {
     file_path: "/path/to/video1.mp4",
     duration: 125, // seconds
-    time_recorded: Math.floor(Date.now() / 1000) - 86400, // 1 day ago
+    time_recorded: { secs_since_epoch: Math.floor(Date.now() / 1000) - 86400 }, // 1 day ago
   },
   {
     file_path: "/path/to/video2.mp4",
     duration: 300,
-    time_recorded: Math.floor(Date.now() / 1000) - 172800, // 2 days ago
+    time_recorded: { secs_since_epoch: Math.floor(Date.now() / 1000) - 172800 }, // 2 days ago
   },
   {
     file_path: "/path/to/recording_2025_01_01.mp4",
     duration: 75,
-    time_recorded: Math.floor(Date.now() / 1000) - 259200, // 3 days ago
+    time_recorded: { secs_since_epoch: Math.floor(Date.now() / 1000) - 259200 }, // 3 days ago
   },
 ];
 
+const mockAvailableResolutions = [
+  [1920, 1080],
+  [1280, 720],
+  [854, 480],
+  [640, 360],
+];
+
+const mockAvailableFrameRates = [60, 30, 24, 15];
+
 let recordingStartTime = null;
 let mockSavingState = null;
+let mockCurrentFrameRate = 30;
+let mockCurrentResolutionIndex = 1;
+let mockCurrentPointer = 1;
 
 export const mockInvoke = async (command, args) => {
   // Simulate network delay
@@ -32,10 +44,31 @@ export const mockInvoke = async (command, args) => {
     case "past_videos":
       return mockPastVideos;
 
+    case "available_resolutions":
+      return mockAvailableResolutions;
+
+    case "available_frame_rates":
+      return mockAvailableFrameRates;
+
+    case "update_frame_rate":
+      mockCurrentFrameRate = args.frameRate;
+      console.log("Mock: Updated frame rate to", mockCurrentFrameRate);
+      return null;
+
+    case "update_resolution":
+      mockCurrentResolutionIndex = args.index;
+      console.log("Mock: Updated resolution to", mockAvailableResolutions[args.index]);
+      return null;
+
+    case "update_pointer":
+      mockCurrentPointer = args.index;
+      console.log("Mock: Updated pointer to", args.index);
+      return null;
+
     case "start_recording":
       mockRecordingState = {
         state: "Recording",
-        instant: new Date().toISOString(),
+        instant: Date.now(),
       };
       recordingStartTime = Date.now();
       return null;

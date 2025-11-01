@@ -1,24 +1,12 @@
 import React from "react";
 
-function EditorMode({ recording }) {
+export function EditorMode() {
   return (
-    <div className="w-full h-screen flex items-center justify-center">
-      <div className="glass w-3/4 h-3/4 flex flex-col items-center justify-center p-6 rounded-lg">
-        {recording ? (
-          <div className="text-center">
-            <h2 className="text-xl font-semibold mb-4">Editing: {recording}</h2>
-            <div className="w-full h-48 glass flex items-center justify-center rounded-lg">
-              <p className="text-gray-300">Video Editor Placeholder</p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-400">
-            No recording selected. Choose a recording to edit.
-          </p>
-        )}
-      </div>
+    <div className="glass card" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <h2 className="card-header">Video Editor</h2>
+      <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
+        Coming soon: Edit your recordings with advanced tools
+      </p>
     </div>
   );
 }
-
-export default EditorMode;

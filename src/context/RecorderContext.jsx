@@ -1,5 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+
+// Wrapper for invoke that uses mock when Tauri is not available
+const invoke = async (command, args) => {
+  if (typeof window !== "undefined" && window.__TAURI_INVOKE__) {
+    return window.__TAURI_INVOKE__(command, args);
+  }
+  
+  try {
+    const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+    return tauriInvoke(command, args);
+  } catch (error) {
+    console.error("Tauri API not available and no mock found:", error);
+    throw error;
+  }
+};
 
 const RecorderContext = createContext();
 

@@ -1,61 +1,124 @@
 import React from "react";
-import { Folder, Trash2 } from "lucide-react";
-import { formatDuration, formatDate, getFilename } from "../utils/formatters";
+import { TrashIcon, FolderOpenIcon, PlayIcon } from "@heroicons/react/24/outline";
+import "./PastRecordings.css";
 
-function PastRecordings({ pastVideos, removeRecording, openVideoInExplorer }) {
-  const reversedVideos = pastVideos ? [...pastVideos].reverse() : [];
+const formatDuration = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  if (mins > 0) {
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `00:${String(secs).padStart(2, "0")}`;
+};
+
+const formatDate = (secsSinceEpoch) => {
+  const date = new Date(secsSinceEpoch * 1000);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return "Today";
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  } else {
+    return date.toLocaleDateString();
+  }
+};
+
+const getFilename = (filePath) => filePath.split("/").pop().split("\\").pop();
+
+export function PastRecordings({ pastVideos, removeRecording }) {
+  const handleCardClick = (videoPath) => {
+    console.log("Open video:", videoPath);
+    // TODO: Implement video playback/preview
+  };
+
+  const handleDelete = (e, index) => {
+    e.stopPropagation(); // Prevent card click
+    if (window.confirm("Are you sure you want to delete this recording?")) {
+      removeRecording(index);
+    }
+  };
+
+  const handleOpenLocation = async (e, videoPath) => {
+    e.stopPropagation(); // Prevent card click
+    try {
+      if (typeof window !== "undefined" && window.__TAURI_INVOKE__) {
+        await window.__TAURI_INVOKE__("open_file_location", { path: videoPath });
+      } else {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("open_file_location", { path: videoPath });
+      }
+    } catch (error) {
+      console.error("Error opening file location:", error);
+    }
+  };
 
   return (
-    <>
-      <h2 className="text-xl font-semibold mb-4">Your Recordings</h2>
-      {reversedVideos.length === 0 ? (
-        <div className="flex items-center justify-center h-[calc(100%-40px)]">
-          <p className="text-gray-400">No recordings yet.</p>
+    <div className="past-recordings">
+      <h2 className="card-header">Your Recordings</h2>
+      
+      {!pastVideos || pastVideos.length === 0 ? (
+        <div className="empty-state">
+          <PlayIcon className="empty-icon" />
+          <p className="empty-text">No recordings yet</p>
+          <p className="empty-subtext">Start recording to see your videos here</p>
         </div>
       ) : (
-        <div className="absolute overflow-y-auto h-[calc(100%-72px)] w-full left-0 top-16 p-6 rounded-lg">
-          <ul className="space-y-4">
-            {reversedVideos.map((rec, index) => (
-              <li
-                key={index}
-                className="glass p-4 rounded-lg flex justify-between items-center transition-all hover:bg-gray-700/50"
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-bold text-lg">
-                    {getFilename(rec.file_path)}
+        <div className="recordings-grid">
+          {pastVideos.map((video, index) => (
+            <div
+              key={index}
+              className="recording-card glass"
+              onClick={() => handleCardClick(video.file_path)}
+            >
+              <div className="recording-preview">
+                <PlayIcon className="play-icon" />
+              </div>
+              
+              <div className="recording-info">
+                <h3 className="recording-title">
+                  {getFilename(video.file_path)}
+                </h3>
+                
+                <div className="recording-meta">
+                  <span className="recording-duration">
+                    {formatDuration(video.duration)}
                   </span>
-                  <div className="flex items-center gap-4 text-sm text-gray-300 mt-1">
-                    <span>{formatDuration(rec.duration)}</span>
-                    <span>{formatDate(rec.time_recorded)}</span>
-                  </div>
+                  <span className="recording-date">
+                    {formatDate(video.time_recorded.secs_since_epoch)}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="p-2 rounded-full hover:bg-gray-600 transition-colors"
-                    title="Open file location"
-                    onClick={() =>
-                      openVideoInExplorer(reversedVideos.length - index - 1)
-                    }
-                  >
-                    <Folder className="h-5 w-5 text-blue-400" />
-                  </button>
-                  <button
-                    className="p-2 rounded-full hover:bg-gray-600 transition-colors"
-                    title="Remove recording from list"
-                    onClick={() =>
-                      removeRecording(reversedVideos.length - index - 1)
-                    }
-                  >
-                    <Trash2 className="h-5 w-5 text-red-500" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              </div>
+              
+              <div className="recording-actions">
+                <button
+                  className="action-button"
+                  onClick={(e) => handleOpenLocation(e, video.file_path)}
+                  title="Open file location"
+                >
+                  <FolderOpenIcon className="action-icon" />
+                </button>
+                <button
+                  className="action-button delete"
+                  onClick={(e) => handleDelete(e, index)}
+                  title="Delete recording"
+                >
+                  <TrashIcon className="action-icon" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-    </>
+    </div>
   );
 }
-
-export default PastRecordings;
