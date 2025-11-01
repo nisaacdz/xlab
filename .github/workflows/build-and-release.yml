@@ -5,10 +5,10 @@ on:
     # Build on all main development branches and release branches to test CI
     branches:
       - main
-      - 'release/**'
+      - "release/**"
     # Build AND Release on version tags (CD)
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -56,8 +56,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -65,7 +65,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install npm dependencies
         run: npm ci
@@ -96,13 +96,13 @@ jobs:
       - name: Install build tool dependencies (pkg-config and CMake)
         run: choco install pkgconfiglite cmake --ignore-checksums
         shell: pwsh
-        
+
       - name: Install LLVM and Clang (needed for static linking)
         uses: KyleMayes/install-llvm-action@v2
         with:
-          version: '18'
+          version: "18"
       # --- END OF WINDOWS TOOLCHAIN FIXES ---
-        
+
       - name: Cache vcpkg
         uses: actions/cache@v4
         with:
@@ -132,8 +132,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -141,7 +141,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install npm dependencies
         run: npm ci
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write
+      contents: write # This permission is CRITICAL for the release action
     steps:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
@@ -176,17 +176,21 @@ jobs:
         with:
           name: windows-binaries
           path: artifacts/windows-binaries/
-          
+
+      # DEBUG STEP: This will print the file tree so you can see the nested paths
+      - name: List downloaded files
+        run: ls -R artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          # THE FIX: Use recursive globs (**) to find files in subdirectories
           files: |
-            artifacts/linux-binaries/*.deb
-            artifacts/linux-binaries/*.rpm
-            artifacts/windows-binaries/*.msi
-            artifacts/windows-binaries/*.exe
+            artifacts/linux-binaries/**/*.deb
+            artifacts/linux-binaries/**/*.rpm
+            artifacts/windows-binaries/**/*.msi
+            artifacts/windows-binaries/**/*.exe
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
