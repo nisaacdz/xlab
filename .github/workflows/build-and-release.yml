@@ -168,10 +168,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download artifacts
+      - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts/
+          name: linux-binaries
+          path: artifacts/linux-binaries/
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: artifacts/windows-binaries/
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
