@@ -1,5 +1,6 @@
 import React from "react";
 import { TrashIcon, FolderOpenIcon, PlayIcon } from "@heroicons/react/24/outline";
+import { invoke } from "@tauri-apps/api/core";
 import "./PastRecordings.css";
 
 const formatDuration = (seconds) => {
@@ -51,12 +52,7 @@ export function PastRecordings({ pastVideos, removeRecording }) {
   const handleOpenLocation = async (e, videoPath) => {
     e.stopPropagation(); // Prevent card click
     try {
-      if (typeof window !== "undefined" && window.__TAURI_INVOKE__) {
-        await window.__TAURI_INVOKE__("open_file_location", { path: videoPath });
-      } else {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("open_file_location", { path: videoPath });
-      }
+      await invoke("open_file_location", { path: videoPath });
     } catch (error) {
       console.error("Error opening file location:", error);
     }
