@@ -1,5 +1,5 @@
 // Mock Tauri API for frontend development
-let mockRecordingState = { state: "Idle" };
+let mockRecordingState = "Idle";
 let mockPastVideos = [
   {
     file_path: "/path/to/video1.mp4",
@@ -66,18 +66,12 @@ export const mockInvoke = async (command, args) => {
       return null;
 
     case "start_recording":
-      mockRecordingState = {
-        state: "Recording",
-        instant: Date.now(),
-      };
+      mockRecordingState = { Recording: Date.now() };
       recordingStartTime = Date.now();
       return null;
 
     case "stop_recording":
-      mockRecordingState = {
-        state: "Done",
-        duration: Math.floor((Date.now() - recordingStartTime) / 1000),
-      };
+      mockRecordingState = { Done: Math.floor((Date.now() - recordingStartTime) / 1000) };
       return null;
 
     case "save_recording":
@@ -85,12 +79,12 @@ export const mockInvoke = async (command, args) => {
       // Simulate saving process
       setTimeout(() => {
         mockSavingState = "Done";
-        mockRecordingState = { state: "Idle" };
+        mockRecordingState = "Idle";
       }, 2000);
       return null;
 
     case "discard_recording":
-      mockRecordingState = { state: "Idle" };
+      mockRecordingState = "Idle";
       return null;
 
     case "saving_progress":
