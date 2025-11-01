@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated project version to 0.0.4 across all configuration files
 - Synchronized version numbers in package.json, tauri.conf.json, and Cargo.toml files
 
-## [0.1.0] - Previous Release
+## [0.1.0] - 2025-10-01
 
 ### Added
 - Initial Tauri application setup
