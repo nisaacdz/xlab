@@ -1,5 +1,6 @@
 import React from "react";
-import { CursorArrowRaysIcon, CursorArrowRippleIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
+import { CursorArrowRaysIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
+import renderSolidPointer from "./SolidPointers";
 import "./PointerPreview.css";
 
 const pointerOptions = [
@@ -19,10 +20,31 @@ const pointerOptions = [
   },
   { 
     id: 2, 
-    name: "Solid", 
-    description: "Highlighted solid cursor",
-    Icon: CursorArrowRippleIcon,
-    preview: "solid"
+    name: "Circle", 
+    description: "Circle with ring pointer",
+    preview: "solid",
+    solidIndex: 2
+  },
+  { 
+    id: 3, 
+    name: "Cross", 
+    description: "Cross with padding pointer",
+    preview: "solid",
+    solidIndex: 3
+  },
+  { 
+    id: 4, 
+    name: "Rings", 
+    description: "Concentric circles pointer",
+    preview: "solid",
+    solidIndex: 4
+  },
+  { 
+    id: 5, 
+    name: "X-Mark", 
+    description: "Diagonal cross pointer",
+    preview: "solid",
+    solidIndex: 5
   }
 ];
 
@@ -32,7 +54,6 @@ export function PointerPreview({ currentPointer, onSelect, disabled }) {
       <label className="pointer-label">Mouse Cursor:</label>
       <div className="pointer-options">
         {pointerOptions.map((option) => {
-          const Icon = option.Icon;
           const isSelected = currentPointer === option.id;
           
           return (
@@ -44,7 +65,13 @@ export function PointerPreview({ currentPointer, onSelect, disabled }) {
               title={option.description}
             >
               <div className="pointer-icon-wrapper">
-                <Icon className="pointer-icon" />
+                {option.Icon ? (
+                  <option.Icon className="pointer-icon" />
+                ) : (
+                  <div className="pointer-svg-preview">
+                    {renderSolidPointer(option.solidIndex)}
+                  </div>
+                )}
               </div>
               <span className="pointer-name">{option.name}</span>
             </button>

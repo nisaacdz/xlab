@@ -82,3 +82,36 @@ pub fn past_videos() -> Vec<PreviousRecording> {
 pub fn remove_previous_recording_by_index(index: usize) {
     xlab_core::delete_previous_recording(index);
 }
+
+#[tauri::command]
+pub fn open_file_location(path: String) -> Result<(), String> {
+    use std::process::Command;
+    
+    let path = std::path::Path::new(&path);
+    
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .args(["/select,", path.to_str().unwrap()])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
+}

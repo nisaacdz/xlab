@@ -116,6 +116,10 @@ fn log_new_recording(file_path: PathBuf, duration: u64) {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct PreviousRecording {
+    #[serde(
+        serialize_with = "serialize_time_recorded",
+        deserialize_with = "deserialize_time_recorded"
+    )]
     time_recorded: u64, // time as duration since unix epoch
     duration: u64,
     #[serde(
@@ -139,6 +143,35 @@ where
 {
     let path_str = String::deserialize(dz)?;
     Ok(PathBuf::from(path_str))
+}
+
+fn serialize_time_recorded<S>(time: &u64, sz: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize;
+    #[derive(Serialize)]
+    struct TimeRecorded {
+        secs_since_epoch: u64,
+    }
+    TimeRecorded { secs_since_epoch: *time }.serialize(sz)
+}
+
+fn deserialize_time_recorded<'de, D>(dz: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum TimeRecorded {
+        Object { secs_since_epoch: u64 },
+        Number(u64),
+    }
+    match TimeRecorded::deserialize(dz)? {
+        TimeRecorded::Object { secs_since_epoch } => Ok(secs_since_epoch),
+        TimeRecorded::Number(v) => Ok(v),
+    }
 }
 
 fn completed_recordings_log() -> PathBuf {

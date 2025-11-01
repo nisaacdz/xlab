@@ -48,7 +48,8 @@ pub fn run() {
             update_frame_rate,
             saving_progress,
             past_videos,
-            remove_previous_recording_by_index
+            remove_previous_recording_by_index,
+            open_file_location
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
