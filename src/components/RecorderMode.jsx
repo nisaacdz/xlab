@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRecorder } from "../context/RecorderContext";
 import RecordingControls from "./RecordingControls";
 import RecordingOptions from "./RecordingOptions";
-import PastVideosList from "./PastVideosList";
+import { PastRecordings } from "./PastRecordings";
 import {
   RecordingState,
   SavingState,
@@ -13,8 +13,9 @@ import {
   startRecording,
   stopRecording,
 } from "../utils/api";
+import "./RecorderMode.css";
 
-function RecorderMode() {
+export function RecorderMode() {
   const [recordingState, setRecordingState] = useState(null);
 
   const {
@@ -100,12 +101,12 @@ function RecorderMode() {
     }
 
     return () => clearTimeout(timeout);
-  }, [recordingState]);
+  }, [recordingState, refreshPastVideos]);
 
   return (
-    <div className="grid grid-cols-2 w-full h-full gap-6">
-      <div className="glass w-full h-full p-6 flex flex-col rounded-lg gap-6">
-        <h2 className="text-xl font-semibold text-center">Recorder Options</h2>
+    <div className="recorder-mode">
+      <div className="recorder-panel glass">
+        <h2 className="card-header">Recording Studio</h2>
         <RecordingOptions
           resolution={resolution}
           updateResolution={updateResolution}
@@ -125,8 +126,8 @@ function RecorderMode() {
           onReleaseRecording={onReleaseRecording}
         />
       </div>
-      <div className="w-full h-full relative glass p-6 rounded-lg">
-        <PastVideosList
+      <div className="recordings-panel glass">
+        <PastRecordings
           pastVideos={pastVideos}
           removeRecording={removePastVideo}
         />
@@ -134,5 +135,3 @@ function RecorderMode() {
     </div>
   );
 }
-
-export default RecorderMode;

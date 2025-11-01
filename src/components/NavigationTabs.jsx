@@ -1,31 +1,39 @@
 import React from "react";
-import recorderIcon from "../assets/recorder.svg";
-import editorIcon from "../assets/editor.svg";
-import settingsIcon from "../assets/settings.svg";
+import { 
+  VideoCameraIcon, 
+  ScissorsIcon, 
+  Cog6ToothIcon 
+} from "@heroicons/react/24/outline";
+import "./NavigationTabs.css";
 
-const modes = [
-  { id: "recorder", icon: recorderIcon, alt: "Recorder", enabled: true },
-  { id: "editor", icon: editorIcon, alt: "Editor", enabled: false },
-  { id: "settings", icon: settingsIcon, alt: "Settings", enabled: false },
+const tabs = [
+  { id: "recorder", Icon: VideoCameraIcon, label: "Recorder" },
+  { id: "editor", Icon: ScissorsIcon, label: "Editor" },
+  { id: "settings", Icon: Cog6ToothIcon, label: "Settings" },
 ];
-// Enable only the recorder tab for now
-// until I come up ideas for the other tabs
 
 function NavigationTabs({ mode, setMode }) {
   return (
-    <div className="flex justify-evenly bg-gray-800 p-3 rounded-lg max-w-96 min-w-64 w-[calc(100%/3)]">
-      {modes.map(({ id, icon, alt, enabled }, idx) => (
-        <button
-          key={id}
-          onClick={() => setMode(id)}
-          className={`p-2 ${mode !== id ? "bg-gray-700 rounded-md" : ""}`}
-          aria-label={`Switch to ${alt} mode`}
-          disabled={ !enabled }
-        >
-          <img src={icon} alt={alt} className="h-6 w-6" />
-        </button>
-      ))}
-    </div>
+    <nav className="navigation-tabs">
+      <div className="tabs-container glass">
+        {tabs.map(({ id, Icon, label }) => {
+          const isActive = mode === id;
+          
+          return (
+            <button
+              key={id}
+              onClick={() => setMode(id)}
+              className={`tab-button ${isActive ? "active" : ""}`}
+              aria-label={label}
+              title={label}
+            >
+              <Icon className="tab-icon" />
+              <span className="tab-label">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

@@ -1,12 +1,12 @@
 import React from "react";
 
-const SettingsMode = () => {
+export function SettingsMode() {
   return (
-    <div>
-      <h1>Settings Mode</h1>
-      <p>This is the settings mode component.</p>
+    <div className="glass card" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <h2 className="card-header">Settings</h2>
+      <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
+        Coming soon: Configure your recording preferences
+      </p>
     </div>
   );
-};
-
-export default SettingsMode;
+}

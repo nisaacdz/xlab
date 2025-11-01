@@ -1,0 +1,24 @@
+.recorder-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.recorder-panel,
+.recordings-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .recorder-mode {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}
