@@ -9,9 +9,6 @@ on:
     # Build AND Release on version tags (CD)
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
