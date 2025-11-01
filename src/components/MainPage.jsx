@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +19,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDuration, formatDate, getFilename } from "../utils/formatters";
 import { RecordingState, SavingState } from "../utils/api";
+
+// Wrapper for invoke that uses mock when Tauri is not available
+const invoke = async (command, args) => {
+  // Check if mock is available
+  if (typeof window !== "undefined" && window.__TAURI_INVOKE__) {
+    return window.__TAURI_INVOKE__(command, args);
+  }
+  
+  // Try to use real Tauri API
+  try {
+    const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+    return tauriInvoke(command, args);
+  } catch (error) {
+    console.error("Tauri API not available and no mock found:", error);
+    throw error;
+  }
+};
 
 function formatTime(milliseconds) {
   const seconds = Math.floor(milliseconds / 1000);
