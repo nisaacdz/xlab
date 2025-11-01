@@ -18,7 +18,12 @@ const formatDuration = (seconds) => {
 };
 
 const formatDate = (secsSinceEpoch) => {
-  const date = new Date(secsSinceEpoch * 1000);
+  // Handle both direct number and object with secs_since_epoch property
+  const timestamp = typeof secsSinceEpoch === 'object' && secsSinceEpoch.secs_since_epoch 
+    ? secsSinceEpoch.secs_since_epoch 
+    : secsSinceEpoch;
+    
+  const date = new Date(timestamp * 1000);
   const now = new Date();
   const diffMs = now - date;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -37,9 +42,12 @@ const formatDate = (secsSinceEpoch) => {
 const getFilename = (filePath) => filePath.split("/").pop().split("\\").pop();
 
 export function PastRecordings({ pastVideos, removeRecording }) {
-  const handleCardClick = (videoPath) => {
-    console.log("Open video:", videoPath);
-    // TODO: Implement video playback/preview
+  const handleCardClick = async (videoPath) => {
+    try {
+      await invoke("open_file_location", { path: videoPath });
+    } catch (error) {
+      console.error("Error opening video location:", error);
+    }
   };
 
   const handleDelete = (e, index) => {
