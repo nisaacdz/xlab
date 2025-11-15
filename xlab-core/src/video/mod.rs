@@ -33,8 +33,9 @@ pub struct VideoEncoder {
     frame: *mut AVFrame,
     packet: *mut AVPacket,
     time_base: AVRational,
-    #[allow(dead_code)]
     target_resolution: (u32, u32),
+    source_resolution: (u32, u32),
+    needs_resize: bool,
 }
 
 impl VideoEncoder {
@@ -148,6 +149,8 @@ impl VideoEncoder {
                 return Err("Failed to write header".into());
             }
 
+            let needs_resize = image_dimensions != resolution;
+            
             Ok(Self {
                 fmt_ctx,
                 codec_ctx,
@@ -157,6 +160,8 @@ impl VideoEncoder {
                 packet,
                 time_base: (*codec_ctx).time_base,
                 target_resolution: resolution,
+                source_resolution: image_dimensions,
+                needs_resize,
             })
         }
     }
@@ -176,35 +181,54 @@ impl VideoEncoder {
         frame_index: u64,
     ) -> Result<(), String> {
         unsafe {
-            // 1. Prepare scaling variables
-            let src_slice = [rgba_data.as_ptr()];
-            let src_stride = [(width * 4) as i32];
+            if self.needs_resize {
+                // Images need resizing - use sws_scale
+                let src_slice = [rgba_data.as_ptr()];
+                let src_stride = [(width * 4) as i32];
 
-            // 2 Perform scaling
-            let result = sws_scale(
-                self.sws_ctx,
-                src_slice.as_ptr(),
-                src_stride.as_ptr(),
-                0,
-                height as i32,
-                (*self.frame).data.as_ptr() as *mut *mut u8,
-                (*self.frame).linesize.as_ptr(),
-            );
+                let result = sws_scale(
+                    self.sws_ctx,
+                    src_slice.as_ptr(),
+                    src_stride.as_ptr(),
+                    0,
+                    height as i32,
+                    (*self.frame).data.as_ptr() as *mut *mut u8,
+                    (*self.frame).linesize.as_ptr(),
+                );
 
-            if result < 0 {
-                return Err("Failed to scale image".into());
+                if result < 0 {
+                    return Err("Failed to scale image".into());
+                }
+            } else {
+                // Images are already at target resolution - copy directly
+                let src_slice = [rgba_data.as_ptr()];
+                let src_stride = [(width * 4) as i32];
+
+                let result = sws_scale(
+                    self.sws_ctx,
+                    src_slice.as_ptr(),
+                    src_stride.as_ptr(),
+                    0,
+                    height as i32,
+                    (*self.frame).data.as_ptr() as *mut *mut u8,
+                    (*self.frame).linesize.as_ptr(),
+                );
+
+                if result < 0 {
+                    return Err("Failed to convert image format".into());
+                }
             }
 
-            // 3. Set frame properties
+            // Set frame properties
             (*self.frame).pts = frame_index as i64;
 
-            // 4. Send frame to encoder
+            // Send frame to encoder
             let send_result = avcodec_send_frame(self.codec_ctx, self.frame);
             if send_result < 0 {
                 return Err("Failed to send frame to encoder".into());
             }
 
-            // 5. Process packets
+            // Process packets
             while avcodec_receive_packet(self.codec_ctx, self.packet) >= 0 {
                 av_packet_rescale_ts(self.packet, self.time_base, (*self.stream).time_base);
                 (*self.packet).stream_index = (*self.stream).index;
