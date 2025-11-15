@@ -5,19 +5,10 @@ const RecorderContext = createContext();
 
 export const useRecorder = () => useContext(RecorderContext);
 
-const DEFAULT_RESOLUTION = 720;
-const DEFAULT_FRAME_RATE = 30;
-
 export const RecorderProvider = ({ children }) => {
-  const [resolution, setResolution] = useState(() => {
-    const old_width = window.screen.width;
-    const old_height = window.screen.height;
-    const new_height = DEFAULT_RESOLUTION;
-    const new_width = Math.floor((old_width / old_height) * new_height);
-    return [new_width, new_height];
-  });
-  const [frameRate, setFrameRate] = useState(DEFAULT_FRAME_RATE);
-  const [pointerBehavior, setPointerBehavior] = useState(0);
+  const [resolution, setResolution] = useState(null);
+  const [frameRate, setFrameRate] = useState(null);
+  const [pointerBehavior, setPointerBehavior] = useState(null);
   const [availableResolutions, setAvailableResolutions] = useState(null);
   const [availableFrameRates, setAvailableFrameRates] = useState(null);
   const [pastVideos, setPastVideos] = useState(null);
@@ -57,6 +48,15 @@ export const RecorderProvider = ({ children }) => {
         .catch(console.error),
       invoke("available_frame_rates")
         .then(setAvailableFrameRates)
+        .catch(console.error),
+      invoke("get_current_resolution")
+        .then(setResolution)
+        .catch(console.error),
+      invoke("get_current_frame_rate")
+        .then(setFrameRate)
+        .catch(console.error),
+      invoke("get_current_pointer")
+        .then(setPointerBehavior)
         .catch(console.error),
       refreshPastVideos(),
     ]);

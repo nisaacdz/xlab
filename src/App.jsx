@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { RecorderProvider } from "./context/RecorderContext";
 import { RecorderMode } from "./components/RecorderMode";
-import { EditorMode } from "./components/EditorMode";
 import { SettingsMode } from "./components/SettingsMode";
 import NavigationTabs from "./components/NavigationTabs";
 import "./App.css";
 
 function App() {
-  const [mode, setMode] = useState("recorder"); // recorder | editor | settings
+  const [mode, setMode] = useState("recorder"); // recorder | settings
 
   return (
     <RecorderProvider>
@@ -17,7 +16,6 @@ function App() {
           
           <div className="mode-container">
             {mode === "recorder" && <RecorderMode />}
-            {mode === "editor" && <EditorMode />}
             {mode === "settings" && <SettingsMode />}
           </div>
         </div>

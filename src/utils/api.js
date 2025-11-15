@@ -88,3 +88,7 @@ export async function discardRecording() {
 export async function releaseRecording() {
   await invoke("save_recording");
 }
+
+export async function captureCurrentPointerImage() {
+  return await invoke("capture_current_pointer_image");
+}

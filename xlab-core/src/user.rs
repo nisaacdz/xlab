@@ -31,8 +31,13 @@ impl UserOptions {
 pub fn get_user_options() -> &'static Mutex<UserOptions> {
     OPTIONS.get_or_init(move || {
         let pointer = get_pointers().get(0).unwrap().as_ref();
-        let frame_rate = 32;
-        let resolution = (1366, 768);
+        let frame_rate = 30; // Default to 30 FPS (matches available_frame_rates)
+        // Default resolution: 720p with current screen aspect ratio
+        let (screen_width, screen_height) = crate::screen_resolution();
+        let aspect_ratio = screen_width as f32 / screen_height as f32;
+        let default_height = 720;
+        let default_width = (default_height as f32 * aspect_ratio).round() as u32 & !1; // Make even
+        let resolution = (default_width, default_height);
         Mutex::new(UserOptions::new(pointer, frame_rate, resolution))
     })
 }

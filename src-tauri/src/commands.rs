@@ -69,6 +69,38 @@ pub fn update_frame_rate(frame_rate: u32) {
 }
 
 #[tauri::command]
+pub fn get_current_resolution() -> [u32; 2] {
+    let options = xlab_core::user::get_user_options();
+    let options = options.lock().unwrap();
+    let (width, height) = options.resolution;
+    [width, height]
+}
+
+#[tauri::command]
+pub fn get_current_frame_rate() -> u32 {
+    let options = xlab_core::user::get_user_options();
+    let options = options.lock().unwrap();
+    options.frame_rate
+}
+
+#[tauri::command]
+pub fn get_current_pointer() -> usize {
+    let options = xlab_core::user::get_user_options();
+    let options = options.lock().unwrap();
+    let pointers = xlab_core::user::get_pointers();
+    // Find the index of the current pointer
+    pointers.iter().position(|p| std::ptr::eq(p.as_ref() as *const _, options.pointer as *const _)).unwrap_or(0)
+}
+
+#[tauri::command]
+pub fn capture_current_pointer_image() -> Option<Vec<u8>> {
+    // Capture the current system pointer and return it as PNG bytes
+    // This can be used for compositing into videos
+    // Returns None if capture is not available or fails
+    None // TODO: Implement actual pointer capture
+}
+
+#[tauri::command]
 pub fn saving_progress() -> Option<SaveProgress> {
     *xlab_core::record::get_save_progress().lock().unwrap()
 }
