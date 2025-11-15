@@ -158,11 +158,10 @@ where
             std::fs::create_dir_all(&output_dir).unwrap();
         }
         let mut output_path = generate_output_path(&output_dir, &session_name);
-        // Images are already resized during recording, so source and target dimensions are the same
+        // Images are already resized during recording
         let mut video_encoder = super::video::VideoEncoder::new(
             output_path.clone(),
             frame_rate,
-            resolution,
             resolution,
             Default::default(),
         )
