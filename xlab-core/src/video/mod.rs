@@ -166,6 +166,8 @@ impl VideoEncoder {
         }
     }
 
+    /// Appends an RGBA image to the video stream. If the image dimensions match the target
+    /// resolution, only format conversion is performed. Otherwise, resizing is also applied.
     pub fn append_image(&mut self, image: RgbaImage, index: u64) -> Result<(), String> {
         let (width, height) = image.dimensions();
         let rgba_data = image.into_raw();
