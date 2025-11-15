@@ -1,6 +1,6 @@
 [package]
 name = "xlab"
-version = "0.1.0"
+version = "0.0.6"
 description = "High performance screen recorder"
 authors = ["you"]
 edition = "2021"
