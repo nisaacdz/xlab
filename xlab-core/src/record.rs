@@ -92,12 +92,18 @@ pub fn record() {
 
         while record_options_mtx.lock().unwrap().is_recording() {
             let start = std::time::Instant::now();
-            let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
+            
+            // Reduce mutex lock contention by acquiring once per frame
+            let (cache_count, target_resolution) = {
+                let mut options = record_options_mtx.lock().unwrap();
+                (options.next_cache_count(), options.get_resolution())
+            };
+            
             let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
             let screen = monitor.capture_image().unwrap();
             let pointer_position = get_mouse_position();
 
-            process(image_dir, pointer, screen, pointer_position);
+            process(image_dir, pointer, screen, pointer_position, target_resolution);
 
             std::thread::sleep(
                 wait_duration
@@ -137,10 +143,6 @@ where
         .unwrap()
         .replace(SaveProgress::Initializing);
 
-    let image_dimensions = {
-        let monitor = xcap::Monitor::all().unwrap().into_iter().next().unwrap();
-        (monitor.width().unwrap(), monitor.height().unwrap())
-    };
     let handle = std::thread::spawn(move || {
         get_record_handle().lock().unwrap().take().map(|u| u.join());
         let record_options_mtx = get_options();
@@ -156,11 +158,11 @@ where
             std::fs::create_dir_all(&output_dir).unwrap();
         }
         let mut output_path = generate_output_path(&output_dir, &session_name);
+        // Images are already resized during recording
         let mut video_encoder = super::video::VideoEncoder::new(
             output_path.clone(),
             frame_rate,
             resolution,
-            image_dimensions,
             Default::default(),
         )
         .unwrap();
@@ -237,8 +239,16 @@ fn process(
     pointer: &'static dyn Pointer,
     mut screen: RgbaImage,
     pointer_position: (u32, u32),
+    target_resolution: (u32, u32),
 ) {
     pointer.resolve(&mut screen, pointer_position);
+    
+    // Resize image during recording to optimize release stage
+    let current_dimensions = screen.dimensions();
+    if current_dimensions != target_resolution {
+        crate::resize_image(&mut screen, target_resolution);
+    }
+    
     screen.save(image_path).ok();
 }
 

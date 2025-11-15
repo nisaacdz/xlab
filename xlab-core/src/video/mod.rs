@@ -33,16 +33,14 @@ pub struct VideoEncoder {
     frame: *mut AVFrame,
     packet: *mut AVPacket,
     time_base: AVRational,
-    #[allow(dead_code)]
-    target_resolution: (u32, u32),
+    dimensions: (u32, u32),
 }
 
 impl VideoEncoder {
     pub fn new(
         output_path: PathBuf,
         fps: u32,
-        resolution: (u32, u32),
-        image_dimensions: (u32, u32),
+        dimensions: (u32, u32),
         config: EncoderConfig,
     ) -> Result<Self, String> {
         unsafe {
@@ -86,8 +84,8 @@ impl VideoEncoder {
 
             // 5. Configure codec parameters
             (*codec_ctx).codec_id = AV_CODEC_ID_H264;
-            (*codec_ctx).width = resolution.0 as i32;
-            (*codec_ctx).height = resolution.1 as i32;
+            (*codec_ctx).width = dimensions.0 as i32;
+            (*codec_ctx).height = dimensions.1 as i32;
             (*codec_ctx).time_base = AVRational {
                 num: 1,
                 den: fps as i32,
@@ -117,13 +115,13 @@ impl VideoEncoder {
                 return Err("Failed to open codec".into());
             }
 
-            // 9. Create scaling context
+            // 9. Create scaling context for format conversion
             let sws_ctx = sws_getContext(
-                image_dimensions.0 as i32,
-                image_dimensions.1 as i32,
+                dimensions.0 as i32,
+                dimensions.1 as i32,
                 AV_PIX_FMT_RGBA,
-                resolution.0 as i32,
-                resolution.1 as i32,
+                dimensions.0 as i32,
+                dimensions.1 as i32,
                 config.pix_fmt,
                 SWS_BILINEAR,
                 ptr::null_mut(),
@@ -133,8 +131,8 @@ impl VideoEncoder {
 
             // 10. Allocate frame
             let frame = av_frame_alloc();
-            (*frame).width = resolution.0 as i32;
-            (*frame).height = resolution.1 as i32;
+            (*frame).width = dimensions.0 as i32;
+            (*frame).height = dimensions.1 as i32;
             (*frame).format = config.pix_fmt as i32;
             if av_frame_get_buffer(frame, 0) < 0 {
                 return Err("Failed to allocate frame buffers".into());
@@ -156,11 +154,13 @@ impl VideoEncoder {
                 frame,
                 packet,
                 time_base: (*codec_ctx).time_base,
-                target_resolution: resolution,
+                dimensions,
             })
         }
     }
 
+    /// Appends an RGBA image to the video stream. Images should be pre-resized to the
+    /// target dimensions; this method only performs format conversion (RGBA to YUV420P).
     pub fn append_image(&mut self, image: RgbaImage, index: u64) -> Result<(), String> {
         let (width, height) = image.dimensions();
         let rgba_data = image.into_raw();
@@ -176,11 +176,10 @@ impl VideoEncoder {
         frame_index: u64,
     ) -> Result<(), String> {
         unsafe {
-            // 1. Prepare scaling variables
+            // Images are pre-resized during recording, only format conversion needed
             let src_slice = [rgba_data.as_ptr()];
             let src_stride = [(width * 4) as i32];
 
-            // 2 Perform scaling
             let result = sws_scale(
                 self.sws_ctx,
                 src_slice.as_ptr(),
@@ -192,19 +191,19 @@ impl VideoEncoder {
             );
 
             if result < 0 {
-                return Err("Failed to scale image".into());
+                return Err("Failed to convert image format".into());
             }
 
-            // 3. Set frame properties
+            // Set frame properties
             (*self.frame).pts = frame_index as i64;
 
-            // 4. Send frame to encoder
+            // Send frame to encoder
             let send_result = avcodec_send_frame(self.codec_ctx, self.frame);
             if send_result < 0 {
                 return Err("Failed to send frame to encoder".into());
             }
 
-            // 5. Process packets
+            // Process packets
             while avcodec_receive_packet(self.codec_ctx, self.packet) >= 0 {
                 av_packet_rescale_ts(self.packet, self.time_base, (*self.stream).time_base);
                 (*self.packet).stream_index = (*self.stream).index;
