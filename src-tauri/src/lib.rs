@@ -49,7 +49,6 @@ pub fn run() {
             get_current_resolution,
             get_current_frame_rate,
             get_current_pointer,
-            capture_current_pointer_image,
             saving_progress,
             past_videos,
             remove_previous_recording_by_index,

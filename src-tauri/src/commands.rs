@@ -93,14 +93,6 @@ pub fn get_current_pointer() -> usize {
 }
 
 #[tauri::command]
-pub fn capture_current_pointer_image() -> Option<Vec<u8>> {
-    // Capture the current system pointer and return it as PNG bytes
-    // This can be used for compositing into videos
-    // Returns None if capture is not available or fails
-    None // TODO: Implement actual pointer capture
-}
-
-#[tauri::command]
 pub fn saving_progress() -> Option<SaveProgress> {
     *xlab_core::record::get_save_progress().lock().unwrap()
 }
