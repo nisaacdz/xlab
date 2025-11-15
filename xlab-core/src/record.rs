@@ -92,8 +92,13 @@ pub fn record() {
 
         while record_options_mtx.lock().unwrap().is_recording() {
             let start = std::time::Instant::now();
-            let cache_count = record_options_mtx.lock().unwrap().next_cache_count();
-            let target_resolution = record_options_mtx.lock().unwrap().get_resolution();
+            
+            // Reduce mutex lock contention by acquiring once per frame
+            let (cache_count, target_resolution) = {
+                let mut options = record_options_mtx.lock().unwrap();
+                (options.next_cache_count(), options.get_resolution())
+            };
+            
             let image_dir = generate_cached_image_path(&cache_dir, &session_name, cache_count);
             let screen = monitor.capture_image().unwrap();
             let pointer_position = get_mouse_position();
