@@ -1,14 +1,12 @@
 import React from "react";
 import { 
   VideoCameraIcon, 
-  ScissorsIcon, 
   Cog6ToothIcon 
 } from "@heroicons/react/24/outline";
 import "./NavigationTabs.css";
 
 const tabs = [
   { id: "recorder", Icon: VideoCameraIcon, label: "Recorder" },
-  { id: "editor", Icon: ScissorsIcon, label: "Editor" },
   { id: "settings", Icon: Cog6ToothIcon, label: "Settings" },
 ];
 

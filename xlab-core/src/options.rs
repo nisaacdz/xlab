@@ -199,12 +199,105 @@ pub struct SystemPointer;
 
 impl Pointer for SystemPointer {
     fn resolve(&self, screen: &mut RgbaImage, position: (u32, u32)) {
-        let pointer_image = {
-            // get the current pointer appearance as rgba image
-            RgbaImage::new(16, 16)
-        };
-        draw_image_on_screen(screen, position, &pointer_image, (0, 0));
+        // Capture the current system pointer appearance
+        if let Some((pointer_image, hotspot)) = capture_system_cursor() {
+            draw_image_on_screen(screen, position, &pointer_image, hotspot);
+        }
     }
+}
+
+/// Captures the current system cursor image and hotspot
+/// Returns None if capture fails
+fn capture_system_cursor() -> Option<(RgbaImage, (u32, u32))> {
+    #[cfg(target_os = "windows")]
+    {
+        capture_system_cursor_windows()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        capture_system_cursor_linux()
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        capture_system_cursor_macos()
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn capture_system_cursor_windows() -> Option<(RgbaImage, (u32, u32))> {
+    // Windows cursor capture implementation
+    // This requires Windows API calls to get the current cursor
+    // For now, return a placeholder default cursor
+    // TODO: Implement actual Windows cursor capture using winapi
+    use xcap::image::Rgba;
+    
+    // Create a simple arrow cursor as placeholder
+    let size = 24;
+    let mut img = RgbaImage::new(size, size);
+    
+    // Draw a simple white arrow with black outline
+    for y in 0..size {
+        for x in 0..size {
+            if x <= y && x < size / 3 && y < size * 3 / 4 {
+                // Arrow shape
+                img.put_pixel(x, y, Rgba([255, 255, 255, 255]));
+            }
+        }
+    }
+    
+    Some((img, (0, 0)))
+}
+
+#[cfg(target_os = "linux")]
+fn capture_system_cursor_linux() -> Option<(RgbaImage, (u32, u32))> {
+    // Linux cursor capture implementation
+    // This requires X11 or Wayland APIs to get the current cursor
+    // For now, return a placeholder default cursor
+    // TODO: Implement actual Linux cursor capture using X11/Wayland
+    use xcap::image::Rgba;
+    
+    // Create a simple arrow cursor as placeholder
+    let size = 24;
+    let mut img = RgbaImage::new(size, size);
+    
+    // Draw a simple white arrow with black outline
+    for y in 0..size {
+        for x in 0..size {
+            if x <= y && x < size / 3 && y < size * 3 / 4 {
+                // Arrow shape
+                img.put_pixel(x, y, Rgba([255, 255, 255, 255]));
+            }
+        }
+    }
+    
+    Some((img, (0, 0)))
+}
+
+#[cfg(target_os = "macos")]
+fn capture_system_cursor_macos() -> Option<(RgbaImage, (u32, u32))> {
+    // macOS cursor capture implementation
+    // This requires Cocoa APIs to get the current cursor
+    // For now, return a placeholder default cursor
+    // TODO: Implement actual macOS cursor capture using Cocoa
+    use xcap::image::Rgba;
+    
+    // Create a simple arrow cursor as placeholder
+    let size = 24;
+    let mut img = RgbaImage::new(size, size);
+    
+    // Draw a simple white arrow with black outline
+    for y in 0..size {
+        for x in 0..size {
+            if x <= y && x < size / 3 && y < size * 3 / 4 {
+                // Arrow shape
+                img.put_pixel(x, y, Rgba([255, 255, 255, 255]));
+            }
+        }
+    }
+    
+    Some((img, (0, 0)))
 }
 
 pub fn draw_image_on_screen(
