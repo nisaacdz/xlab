@@ -174,7 +174,7 @@ where
             // png image is at image_path
             // append the image to the video
             let image_path = generate_cached_image_path(&cache_dir, &session_name, cache_count);
-            let image = xcap::image::open(image_path).unwrap().to_rgba8();
+            let image = xcap::image::open(image_path).unwrap().into_rgba8();
             video_encoder.append_image(image, cache_count).unwrap();
         }
 
