@@ -18,7 +18,7 @@ impl Default for EncoderConfig {
     fn default() -> Self {
         Self {
             pix_fmt: AVPixelFormat::AV_PIX_FMT_YUV420P,
-            preset: "medium".to_string(),
+            preset: "medium".to_owned(),
             crf: 23,
             thread_count: 0, // 0 = auto-detect
         }
@@ -176,7 +176,7 @@ impl VideoEncoder {
         frame_index: u64,
     ) -> Result<(), String> {
         unsafe {
-            // Images are pre-resized during recording, only format conversion needed
+            // Format conversion from RGBA to YUV420P
             let src_slice = [rgba_data.as_ptr()];
             let src_stride = [(width * 4) as i32];
 

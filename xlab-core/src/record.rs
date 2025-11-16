@@ -158,7 +158,7 @@ where
             std::fs::create_dir_all(&output_dir).unwrap();
         }
         let mut output_path = generate_output_path(&output_dir, &session_name);
-        // Images are already resized during recording
+        
         let mut video_encoder = super::video::VideoEncoder::new(
             output_path.clone(),
             frame_rate,
@@ -171,8 +171,6 @@ where
                 .lock()
                 .unwrap()
                 .replace(SaveProgress::Saving(cache_count, last_idx));
-            // png image is at image_path
-            // append the image to the video
             let image_path = generate_cached_image_path(&cache_dir, &session_name, cache_count);
             let image = xcap::image::open(image_path).unwrap().into_rgba8();
             video_encoder.append_image(image, cache_count).unwrap();
