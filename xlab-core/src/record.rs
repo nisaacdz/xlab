@@ -232,7 +232,7 @@ pub fn discard_video() {
 pub fn stop() {
     let mut ro = get_options().lock().unwrap();
     let video_duration = ro.end_recording().unwrap();
-    if video_duration.as_secs() > 2 {
+    if video_duration.as_secs() > 10 {
         let corrected_frame_rate = ro.cache_count() / video_duration.as_secs();
         ro.frame_rate = corrected_frame_rate as u32;
     }
