@@ -18,7 +18,7 @@ impl Default for EncoderConfig {
     fn default() -> Self {
         Self {
             pix_fmt: AVPixelFormat::AV_PIX_FMT_YUV420P,
-            preset: "ultrafast".to_string(),
+            preset: "medium".to_string(),
             crf: 23,
             thread_count: 0, // 0 = auto-detect
         }
