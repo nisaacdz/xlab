@@ -32,7 +32,7 @@ pub fn get_user_options() -> &'static Mutex<UserOptions> {
     OPTIONS.get_or_init(move || {
         let pointer = get_pointers().get(0).unwrap().as_ref();
         let frame_rate = 30; // Default to 30 FPS (matches available_frame_rates)
-        // Default resolution: 720p with current screen aspect ratio
+                             // Default resolution: 720p with current screen aspect ratio
         let (screen_width, screen_height) = crate::screen_resolution();
         let aspect_ratio = screen_width as f32 / screen_height as f32;
         let default_height = 720;

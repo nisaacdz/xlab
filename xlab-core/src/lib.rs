@@ -154,7 +154,10 @@ where
     struct TimeRecorded {
         secs_since_epoch: u64,
     }
-    TimeRecorded { secs_since_epoch: *time }.serialize(sz)
+    TimeRecorded {
+        secs_since_epoch: *time,
+    }
+    .serialize(sz)
 }
 
 fn deserialize_time_recorded<'de, D>(dz: D) -> Result<u64, D::Error>

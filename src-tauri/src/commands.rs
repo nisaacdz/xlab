@@ -89,7 +89,10 @@ pub fn get_current_pointer() -> usize {
     let options = options.lock().unwrap();
     let pointers = xlab_core::user::get_pointers();
     // Find the index of the current pointer
-    pointers.iter().position(|p| std::ptr::eq(p.as_ref() as *const _, options.pointer as *const _)).unwrap_or(0)
+    pointers
+        .iter()
+        .position(|p| std::ptr::eq(p.as_ref() as *const _, options.pointer as *const _))
+        .unwrap_or(0)
 }
 
 #[tauri::command]
@@ -110,9 +113,9 @@ pub fn remove_previous_recording_by_index(index: usize) {
 #[tauri::command]
 pub fn open_file_location(path: String) -> Result<(), String> {
     use std::process::Command;
-    
+
     let path = std::path::Path::new(&path);
-    
+
     #[cfg(target_os = "windows")]
     {
         Command::new("explorer")
@@ -120,7 +123,7 @@ pub fn open_file_location(path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         Command::new("open")
@@ -128,7 +131,7 @@ pub fn open_file_location(path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         Command::new("xdg-open")
@@ -136,6 +139,6 @@ pub fn open_file_location(path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }

@@ -213,12 +213,12 @@ fn capture_system_cursor() -> Option<(RgbaImage, (u32, u32))> {
     {
         capture_system_cursor_windows()
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         capture_system_cursor_linux()
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         capture_system_cursor_macos()
@@ -232,11 +232,11 @@ fn capture_system_cursor_windows() -> Option<(RgbaImage, (u32, u32))> {
     // For now, return a placeholder default cursor
     // TODO: Implement actual Windows cursor capture using winapi
     use xcap::image::Rgba;
-    
+
     // Create a simple arrow cursor as placeholder
     let size = 24;
     let mut img = RgbaImage::new(size, size);
-    
+
     // Draw a simple white arrow with black outline
     for y in 0..size {
         for x in 0..size {
@@ -246,7 +246,7 @@ fn capture_system_cursor_windows() -> Option<(RgbaImage, (u32, u32))> {
             }
         }
     }
-    
+
     Some((img, (0, 0)))
 }
 
@@ -257,11 +257,11 @@ fn capture_system_cursor_linux() -> Option<(RgbaImage, (u32, u32))> {
     // For now, return a placeholder default cursor
     // TODO: Implement actual Linux cursor capture using X11/Wayland
     use xcap::image::Rgba;
-    
+
     // Create a simple arrow cursor as placeholder
     let size = 24;
     let mut img = RgbaImage::new(size, size);
-    
+
     // Draw a simple white arrow with black outline
     for y in 0..size {
         for x in 0..size {
@@ -271,7 +271,7 @@ fn capture_system_cursor_linux() -> Option<(RgbaImage, (u32, u32))> {
             }
         }
     }
-    
+
     Some((img, (0, 0)))
 }
 
@@ -282,11 +282,11 @@ fn capture_system_cursor_macos() -> Option<(RgbaImage, (u32, u32))> {
     // For now, return a placeholder default cursor
     // TODO: Implement actual macOS cursor capture using Cocoa
     use xcap::image::Rgba;
-    
+
     // Create a simple arrow cursor as placeholder
     let size = 24;
     let mut img = RgbaImage::new(size, size);
-    
+
     // Draw a simple white arrow with black outline
     for y in 0..size {
         for x in 0..size {
@@ -296,7 +296,7 @@ fn capture_system_cursor_macos() -> Option<(RgbaImage, (u32, u32))> {
             }
         }
     }
-    
+
     Some((img, (0, 0)))
 }
 
