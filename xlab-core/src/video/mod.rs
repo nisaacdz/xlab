@@ -33,7 +33,6 @@ pub struct VideoEncoder {
     frame: *mut AVFrame,
     packet: *mut AVPacket,
     time_base: AVRational,
-    dimensions: (u32, u32),
 }
 
 impl VideoEncoder {
@@ -154,7 +153,6 @@ impl VideoEncoder {
                 frame,
                 packet,
                 time_base: (*codec_ctx).time_base,
-                dimensions,
             })
         }
     }
