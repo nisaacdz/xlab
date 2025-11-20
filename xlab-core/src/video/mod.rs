@@ -19,7 +19,7 @@ impl Default for EncoderConfig {
         Self {
             pix_fmt: AVPixelFormat::AV_PIX_FMT_YUV420P,
             preset: "medium".to_owned(),
-            crf: 23,
+            crf: 18,
             thread_count: 0, // 0 = auto-detect
         }
     }

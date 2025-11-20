@@ -95,7 +95,7 @@ pub fn record() {
 
             // Reduce mutex lock contention by acquiring once per frame
             let (cache_count, target_resolution) = {
-                let mut options = record_options_mtx.lock().unwrap();
+                let options = record_options_mtx.lock().unwrap();
                 (options.next_cache_count(), options.get_resolution())
             };
 
